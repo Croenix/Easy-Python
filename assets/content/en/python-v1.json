@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "id": "python-core-en",
+  "version": 1,
+  "language": "en",
+  "course": "Python",
+  "tasks": [
+    {
+      "id": "L1-01",
+      "title": "Introduction",
+      "order": 1,
+      "minutes": 8,
+      "overview": "Python is a language for giving clear instructions to a computer. In this first task, you will see what Python is, where it is used, and what a tiny program looks like.",
+      "lesson": [
+        {"heading": "What is Python?", "body": "Python is a programming language. You write instructions in Python, and the computer follows them in order."},
+        {"heading": "Where is it used?", "body": "People use Python to automate repetitive work, build websites, explore data, create tools, and control devices."},
+        {"heading": "Your first instruction", "body": "print(...) asks Python to display a value. Text needs matching quotation marks inside the parentheses."},
+        {"heading": "Remember", "body": "A program is a set of instructions. Python runs them in order, and print(...) displays a message."}
+      ],
+      "examples": [
+        {"title": "Display a welcome", "code": "print(\"Hello, Python!\")", "output": "Hello, Python!", "explanation": "The text is inside quotes, and print displays it."}
+      ],
+      "practicals": [
+        {"id": "L1-01-q1", "type": "multipleChoice", "prompt": "Which instruction displays a message?", "options": ["print(\"Hi\")", "show(\"Hi\")", "message = \"Hi\""], "answer": "print(\"Hi\")"},
+        {"id": "L1-01-q2", "type": "yesNo", "prompt": "Does Python follow program instructions in order?", "answer": "yes"},
+        {"id": "L1-01-q3", "type": "code", "prompt": "Write one line that displays the text Ready to learn!", "tests": [{"stdout": "Ready to learn!\n"}]}
+      ],
+      "project": {
+        "title": "A tiny welcome sign",
+        "scenario": "A friend is setting up a welcome screen for a small study group. They need Python to show a friendly title and a second line that says the group is ready.",
+        "friendPrompt": "Hey {name}, I’m putting together a welcome screen for our study group. How can I make Python show a friendly title and then a second line saying we’re ready?",
+        "steps": ["Display a short welcome title.", "Add another print instruction underneath it.", "Run the program and check both lines appear."],
+        "tests": [{"stdoutLines": ["Welcome to the study group!", "We are ready to learn."]}]
+      }
+    },
+    {
+      "id": "L1-02",
+      "title": "Get Started",
+      "order": 2,
+      "minutes": 9,
+      "overview": "A Python program is a set of instructions saved in a file and run by Python. You will learn the basic run cycle and see why output is useful while building a program.",
+      "lesson": [
+        {"heading": "Write and run", "body": "You can write Python in an editor, save the file with a .py ending, and ask Python to run it."},
+        {"heading": "Read the output", "body": "Output is what the program displays. Compare it with what you expected to spot mistakes early."},
+        {"heading": "Follow the order", "body": "Python begins at the first instruction and continues downward. Each print instruction displays its own line."},
+        {"heading": "Remember", "body": "Save your instructions, run the program, and read the output to check what happened."}
+      ],
+      "examples": [
+        {"title": "Two lines of output", "code": "print(\"Good morning!\")\nprint(\"Let’s begin.\")", "output": "Good morning!\nLet’s begin.", "explanation": "Python runs the first print before the second one."}
+      ],
+      "practicals": [
+        {"id": "L1-02-q1", "type": "multipleChoice", "prompt": "What does a .py file usually contain?", "options": ["Python instructions", "A picture", "A spreadsheet"], "answer": "Python instructions"},
+        {"id": "L1-02-q2", "type": "shortAnswer", "prompt": "In a few words, what should you check after running a program?", "answer": "the output", "requiredKeywords": ["output"]},
+        {"id": "L1-02-q3", "type": "code", "prompt": "Display Start on one line and Finished on the next.", "tests": [{"stdout": "Start\nFinished\n"}]}
+      ],
+      "project": {
+        "title": "A two-line event reminder",
+        "scenario": "A club organizer wants a small terminal reminder that shows the event name and then the meeting time on the next line.",
+        "friendPrompt": "Hey {name}, I’m making a quick reminder for our club meetup. How do I show the event name first and the time underneath it?",
+        "steps": ["Choose a short event title.", "Display the meeting time on a separate line.", "Run it and check the order."],
+        "tests": [{"stdoutLines": ["Python Club Meetup", "Today at 4 PM"]}]
+      }
+    },
+    {
+      "id": "L1-03",
+      "title": "Syntax",
+      "order": 3,
+      "minutes": 10,
+      "overview": "Syntax is the set of rules for writing Python instructions. Matching quotes, parentheses, colons, and indentation help Python understand what you mean.",
+      "lesson": [
+        {"heading": "Small rules matter", "body": "Python expects symbols and words to be in the right order. A missing quote or parenthesis can stop a line from running."},
+        {"heading": "Match pairs", "body": "When you open parentheses or quotes, close them. For example, print(\"Hello\") has matching parentheses and quotation marks."},
+        {"heading": "Use clear lines", "body": "Put separate instructions on separate lines. Later, indentation will show which instructions belong inside a block."},
+        {"heading": "Remember", "body": "Syntax is how code is written. Read the exact error line and check its paired symbols first."}
+      ],
+      "examples": [
+        {"title": "A correctly paired print", "code": "print(\"Python is ready\")", "output": "Python is ready", "explanation": "The opening parenthesis and quote each have a matching close."},
+        {"title": "Fix the missing quote", "code": "print(\"Welcome!\")", "output": "Welcome!", "explanation": "The text now has both opening and closing quotation marks."}
+      ],
+      "practicals": [
+        {"id": "L1-03-q1", "type": "multipleChoice", "prompt": "Which line has matching quotes and parentheses?", "options": ["print(\"Hi\")", "print(\"Hi)", "print(\"Hi\""], "answer": "print(\"Hi\")"},
+        {"id": "L1-03-q2", "type": "fixTheBug", "prompt": "Fix the missing closing quote: print(\"Good job!)", "answer": "print(\"Good job!\")", "tests": [{"stdout": "Good job!\n"}]},
+        {"id": "L1-03-q3", "type": "code", "prompt": "Write a valid print instruction that displays Syntax matters.", "tests": [{"stdout": "Syntax matters.\n"}]}
+      ],
+      "project": {
+        "title": "Repair a welcome message",
+        "scenario": "A teammate typed a welcome message, but a missing quote makes Python stop before it can display anything.",
+        "friendPrompt": "Hey {name}, my welcome message keeps giving me a syntax error. Can you spot what’s missing and help me get it to print?",
+        "steps": ["Read the line and find the unmatched symbol.", "Add the missing closing quote or parenthesis.", "Run the corrected line and check the output."],
+        "tests": [{"stdoutLines": ["Welcome aboard!"]}]
+      }
+    }
+  ]
+}

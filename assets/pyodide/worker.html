@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline Python worker</title>
+</head>
+<body>
+  <script>
+    let worker;
+    let ready = false;
+    let pending = null;
+
+    function sendToFlutter(value) {
+      if (window.EasyPython && window.EasyPython.postMessage) {
+        window.EasyPython.postMessage(JSON.stringify(value));
+      }
+    }
+
+    function startWorker() {
+      ready = false;
+      worker = new Worker('./runner_worker.js');
+      worker.onmessage = (event) => {
+        const result = event.data;
+        if (result.type === 'ready') {
+          ready = true;
+          sendToFlutter({type: 'ready'});
+          return;
+        }
+        if (result.type === 'result' && pending && result.id === pending.id) {
+          clearTimeout(pending.timer);
+          pending.resolve(result);
+          pending = null;
+          return;
+        }
+        sendToFlutter(result);
+      };
+      worker.onerror = (error) => sendToFlutter({type: 'workerError', error: error.message});
+    }
+
+    window.runPython = (id, source, inputs) => new Promise((resolve) => {
+      if (!ready || pending) {
+        resolve({id, type: 'result', stderr: '', error: 'Python runtime is still preparing.'});
+        return;
+      }
+      const timer = setTimeout(() => {
+        worker.terminate();
+        pending = null;
+        resolve({id, type: 'result', stdout: '', stderr: '', timedOut: true});
+        startWorker();
+      }, 3000);
+      pending = {id, resolve, timer};
+      worker.postMessage({id, source, inputs});
+    });
+
+    startWorker();
+  </script>
+</body>
+</html>
