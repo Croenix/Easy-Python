@@ -10,12 +10,14 @@ class ModelSpec {
     required this.repository,
     required this.fileName,
     required this.sizeLabel,
+    this.sha256,
   });
 
   final String id;
   final String repository;
   final String fileName;
   final String sizeLabel;
+  final String? sha256;
 
   Uri get downloadUri => Uri.https(
     'huggingface.co',
@@ -36,12 +38,14 @@ class ModelCatalog {
     repository: 'Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF',
     fileName: 'qwen2.5-coder-1.5b-instruct-q4_k_m.gguf',
     sizeLabel: 'about 1.1 GB',
+    sha256: 'cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046',
   );
   static const lowMemory = ModelSpec(
     id: 'qwen3-0.6b-q4',
     repository: 'second-state/Qwen3-0.6B-GGUF',
     fileName: 'Qwen3-0.6B-Q4_K_M.gguf',
     sizeLabel: 'about 450 MB',
+    sha256: 'c1652ac60e30b953cddd45ca3d5744f28d6839de72908f33a97fc75314389d99',
   );
 }
 
@@ -80,13 +84,20 @@ class ModelManager {
 
     final partial = File('${file.path}.part');
     final expectedHash = await _remoteSha256(spec);
-    final offset = await partial.exists() ? await partial.length() : 0;
-    final request = await _client.getUrl(spec.downloadUri);
+    var offset = await partial.exists() ? await partial.length() : 0;
+    var request = await _client.getUrl(spec.downloadUri);
     request.headers.set(HttpHeaders.acceptEncodingHeader, 'identity');
     if (offset > 0) {
       request.headers.set(HttpHeaders.rangeHeader, 'bytes=$offset-');
     }
-    final response = await request.close();
+    var response = await request.close();
+    if (response.statusCode == HttpStatus.requestedRangeNotSatisfiable) {
+      if (await partial.exists()) await partial.delete();
+      offset = 0;
+      request = await _client.getUrl(spec.downloadUri);
+      request.headers.set(HttpHeaders.acceptEncodingHeader, 'identity');
+      response = await request.close();
+    }
     if (response.statusCode != HttpStatus.ok &&
         response.statusCode != HttpStatus.partialContent) {
       throw HttpException(
@@ -129,26 +140,34 @@ class ModelManager {
   }
 
   Future<String> _remoteSha256(ModelSpec spec) async {
-    final request = await _client.getUrl(spec.metadataUri);
-    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-    final response = await request.close();
-    if (response.statusCode != HttpStatus.ok) {
-      throw HttpException(
-        'Model checksum lookup returned HTTP ${response.statusCode}.',
-      );
-    }
-    final decoded = jsonDecode(await response.transform(utf8.decoder).join());
-    if (decoded is! List) {
-      throw const FormatException('Invalid model metadata response.');
-    }
-    for (final row in decoded) {
-      if (row is Map &&
-          (row['path'] == spec.fileName || row['name'] == spec.fileName)) {
-        final lfs = row['lfs'];
-        if (lfs is Map && lfs['sha256'] is String) {
-          return (lfs['sha256'] as String).toLowerCase();
+    try {
+      final request = await _client.getUrl(spec.metadataUri);
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      final response = await request.close();
+      if (response.statusCode == HttpStatus.ok) {
+        final decoded =
+            jsonDecode(await response.transform(utf8.decoder).join());
+        if (decoded is List) {
+          for (final row in decoded) {
+            if (row is Map &&
+                (row['path'] == spec.fileName ||
+                    row['name'] == spec.fileName)) {
+              final lfs = row['lfs'];
+              if (lfs is Map) {
+                final hash = (lfs['oid'] ?? lfs['sha256']) as String?;
+                if (hash != null && hash.isNotEmpty) {
+                  return hash.toLowerCase();
+                }
+              }
+            }
+          }
         }
       }
+    } catch (_) {
+      // Fallback to pinned spec.sha256 if remote request fails
+    }
+    if (spec.sha256 != null && spec.sha256!.isNotEmpty) {
+      return spec.sha256!.toLowerCase();
     }
     throw const FormatException(
       'The model repository did not provide a SHA-256 digest.',

@@ -12,6 +12,8 @@ import 'lesson_retriever.dart';
 import 'on_device_tutor.dart';
 import 'personalization.dart';
 import 'pyodide_runner.dart';
+import 'python_ide_screen.dart';
+import 'supernova_ai.dart';
 
 const ink = AppColors.ink;
 const primary = AppColors.blue;
@@ -244,7 +246,7 @@ class LearnerState extends ChangeNotifier {
   String pythonLevel = 'Beginner';
   String learningStyle = 'Hands-on';
   String language = 'English';
-  String buddyName = 'Pixel';
+  String buddyName = 'Supernova AI';
   String tutorInstructions = '';
   String selectedStage4Track = 'web';
   final Set<String> quickReviewTasks = {};
@@ -365,7 +367,10 @@ class LearnerState extends ChangeNotifier {
       pythonLevel = data['pythonLevel'] as String? ?? pythonLevel;
       learningStyle = data['learningStyle'] as String? ?? learningStyle;
       language = data['language'] as String? ?? language;
-      buddyName = data['buddyName'] as String? ?? buddyName;
+      final savedBuddy = data['buddyName'] as String?;
+      buddyName = (savedBuddy == null || savedBuddy == 'Pixel')
+          ? 'Supernova AI'
+          : savedBuddy;
       tutorInstructions = data['tutorInstructions'] as String? ?? '';
       selectedStage4Track = data['selectedStage4Track'] as String? ?? 'web';
       quickReviewTasks.addAll(
@@ -766,7 +771,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       _ => 'Your learning plan',
     };
     final pageHint = switch (step) {
-      1 => 'A few details help Pixel make this feel personal.',
+      1 => 'A few details help Supernova AI make this feel personal.',
       2 => 'We will start at a level that feels right for you.',
       3 => 'Choose a pace and style that fit your day.',
       _ => 'A simple path shaped around your time and experience.',
@@ -912,8 +917,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                   const SizedBox(height: 18),
                   _ChoiceGroup(
-                    title: 'Choose your buddy',
-                    options: const ['Pixel', 'Pip', 'Byte'],
+                    title: 'Choose your AI mentor',
+                    options: const ['Supernova AI', 'Nova', 'Byte'],
                     value: learner.buddyName,
                     onSelect: (v) => setState(() => learner.buddyName = v),
                   ),
@@ -1283,6 +1288,7 @@ class _MainShellState extends State<MainShell> {
         onChanged: refresh,
       ),
       PathScreen(learner: widget.learner, onOpenLesson: openLesson),
+      PythonIdeScreen(learnerName: widget.learner.name),
       PracticeScreen(learner: widget.learner, onChanged: refresh),
       ProfileScreen(learner: widget.learner, onChanged: refresh),
     ];
@@ -1300,6 +1306,11 @@ class _MainShellState extends State<MainShell> {
           NavigationDestination(
             icon: Icon(Icons.alt_route_rounded),
             label: 'Roadmap',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.code_rounded),
+            selectedIcon: Icon(Icons.code_rounded),
+            label: 'IDE',
           ),
           NavigationDestination(
             icon: Icon(Icons.fitness_center_outlined),
@@ -1527,6 +1538,91 @@ class HomeScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
+          // Dedicated Python IDE Card
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => onTab(2),
+              child: Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: context.isDarkMode
+                        ? const [Color(0xFF1E2838), Color(0xFF161F2E)]
+                        : const [Color(0xFFEBF5FF), Color(0xFFFFFFFF)],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 45,
+                      height: 45,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.blue, AppColors.violet],
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Icon(
+                        Icons.code_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Dedicated Python IDE',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  color: context.appText,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.blue.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'OFFLINE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.blue,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Write, run & debug scripts with Supernova AI',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.appMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_rounded, color: primary),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Supernova AI Card
           Card(
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -1546,7 +1642,9 @@ class HomeScreen extends StatelessWidget {
                       width: 45,
                       height: 45,
                       decoration: BoxDecoration(
-                        color: context.appSurface,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF8174EF), Color(0xFFFFA23A)],
+                        ),
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
@@ -1560,7 +1658,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       child: const Icon(
                         Icons.auto_awesome_rounded,
-                        color: Color(0xFF8174EF),
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1569,7 +1667,7 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Ask your AI tutor',
+                            'Supernova AI Coach',
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
                               color: context.appText,
@@ -1577,7 +1675,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            'A little help, right when you need it',
+                            'Instant answers, error debugging & study tips',
                             style: TextStyle(
                               fontSize: 12,
                               color: context.appMuted,
@@ -1595,7 +1693,7 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Card(
             child: ListTile(
-              onTap: () => onTab(2),
+              onTap: () => onTab(3),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 15,
                 vertical: 5,
@@ -3194,11 +3292,50 @@ class LessonScreen extends StatelessWidget {
                     '${lesson.minutes} min read · Python 3',
                     style: TextStyle(color: context.appMuted),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
+                  // Supernova 5-Step Learning System Pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: context.isDarkMode
+                            ? const [Color(0xFF222744), Color(0xFF1B1E38)]
+                            : const [Color(0xFFEEF2FF), Color(0xFFE4E9FC)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: AppColors.orange,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Supernova AI Study Flow: Spark · Fusion · Practice · Analysis · Project',
+                            style: TextStyle(
+                              color: context.appText,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const _SectionHeading(title: '🌟 Cosmic Spark'),
+                  const SizedBox(height: 8),
                   _LessonGuideCard(guide: guide),
                   if (contentTask != null) ...[
                     const SizedBox(height: 20),
-                    const _SectionHeading(title: 'The lesson'),
+                    const _SectionHeading(title: '⚛️ Core Fusion'),
                     const SizedBox(height: 10),
                     for (final section in contentTask.lesson)
                       _ContentSectionCard(
@@ -3207,7 +3344,7 @@ class LessonScreen extends StatelessWidget {
                       ),
                   ],
                   const SizedBox(height: 20),
-                  const _SectionHeading(title: 'Walk through an example'),
+                  const _SectionHeading(title: '🚀 Orbit Examples'),
                   const SizedBox(height: 10),
                   if (contentTask == null)
                     _CodeCard(code: lesson.example)
@@ -3219,7 +3356,9 @@ class LessonScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   _TopicWrapUpCard(takeaway: guide.topicTakeaway),
                   if (contentTask != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+                    const _SectionHeading(title: '🌌 Nova Project'),
+                    const SizedBox(height: 10),
                     _ContentSectionCard(
                       heading:
                           contentTask.project['title'] as String? ??
@@ -3361,6 +3500,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
   String? selectedOption;
   String? runOutput;
   AnswerEvaluation? evaluation;
+  SupernovaAnalysis? supernovaAnalysis;
   bool runnerReady = false;
   bool checking = false;
 
@@ -3736,9 +3876,10 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      evaluation!.isCorrect
-                                          ? 'Right! Well done, $userName.'
-                                          : 'Not quite yet, $userName.',
+                                      supernovaAnalysis?.headline ??
+                                          (evaluation!.isCorrect
+                                              ? 'Right! Well done, $userName.'
+                                              : 'Not quite yet, $userName.'),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w800,
                                         fontSize: 14,
@@ -3758,8 +3899,9 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                                   color: context.appText,
                                 ),
                               ),
-                              if (question.aiExplanation != null &&
-                                  question.aiExplanation!.isNotEmpty) ...[
+                              if (supernovaAnalysis?.cosmicTip != null ||
+                                  (question.aiExplanation != null &&
+                                      question.aiExplanation!.isNotEmpty)) ...[
                                 const SizedBox(height: 8),
                                 Container(
                                   padding: const EdgeInsets.all(10),
@@ -3768,23 +3910,29 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                                         ? Colors.black26
                                         : Colors.white70,
                                     borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: primary.withValues(alpha: 0.2),
+                                    ),
                                   ),
                                   child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Icon(
-                                        Icons.info_outline_rounded,
+                                        Icons.auto_awesome_rounded,
                                         size: 16,
-                                        color: primary,
+                                        color: AppColors.orange,
                                       ),
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          question.aiExplanation!,
+                                          supernovaAnalysis?.cosmicTip != null
+                                              ? 'Supernova Tip: ${supernovaAnalysis!.cosmicTip}'
+                                              : question.aiExplanation!,
                                           style: TextStyle(
                                             fontSize: 12.5,
                                             height: 1.4,
+                                            fontWeight: FontWeight.w600,
                                             color: context.appText,
                                           ),
                                         ),
@@ -3871,9 +4019,12 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     children: options
         .map(
           (option) => Card(
+            // ignore: deprecated_member_use
             child: RadioListTile<String>(
               value: option,
+              // ignore: deprecated_member_use
               groupValue: selectedOption,
+              // ignore: deprecated_member_use
               onChanged: evaluation?.isCorrect == true
                   ? null
                   : (value) => setState(() => selectedOption = value),
@@ -3886,7 +4037,16 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
   Future<void> _checkWrittenAnswer() async {
     final response = selectedOption ?? responseController.text.trim();
-    final result = const AnswerEvaluator().evaluate(question, response);
+    final analysis = const SupernovaEngine().analyzeSubmission(
+      question: question,
+      userResponse: response,
+      userName: widget.learner.name,
+    );
+    supernovaAnalysis = analysis;
+    final result = AnswerEvaluation(
+      isCorrect: analysis.isCorrect,
+      message: analysis.explanation,
+    );
     await _recordResult(response, result);
   }
 
@@ -3895,10 +4055,16 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     setState(() => checking = true);
     try {
       final runResult = await runnerKey.currentState!.run(source);
-      final evaluationResult = const AnswerEvaluator().evaluate(
-        question,
-        source,
+      final analysis = const SupernovaEngine().analyzeSubmission(
+        question: question,
+        userResponse: source,
+        userName: widget.learner.name,
         runResult: runResult,
+      );
+      supernovaAnalysis = analysis;
+      final evaluationResult = AnswerEvaluation(
+        isCorrect: analysis.isCorrect,
+        message: analysis.explanation,
       );
       if (!mounted) return;
       setState(() => runOutput = runResult.stdout);
@@ -3929,6 +4095,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
       questionIndex++;
       selectedOption = null;
       evaluation = null;
+      supernovaAnalysis = null;
       runOutput = null;
       responseController.clear();
     });
@@ -5016,7 +5183,7 @@ class _TutorScreenState extends State<TutorScreen> {
   final input = TextEditingController();
   final scrollController = ScrollController();
   late final List<_TutorMessage> messages;
-  bool enabled = false;
+  bool enabled = true;
   bool preparing = false;
   bool generating = false;
   double progress = 0;
@@ -5059,9 +5226,8 @@ class _TutorScreenState extends State<TutorScreen> {
         await tutor.unload();
         if (!mounted) return;
         setState(() {
-          enabled = false;
           statusMessage =
-              'The tutor is paused to save memory. Tap to load it again.';
+              'The on-device model is paused to save memory. Tap download icon to load it again.';
         });
       });
     }
@@ -5092,13 +5258,19 @@ class _TutorScreenState extends State<TutorScreen> {
             const SizedBox(width: 10),
             const Expanded(
               child: Text(
-                'Easy Python tutor',
+                'Supernova AI tutor',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
           ],
         ),
         actions: [
+          if (!tutor.isReady && !preparing)
+            IconButton(
+              tooltip: 'Download offline AI model',
+              onPressed: _enableTutor,
+              icon: const Icon(Icons.download_rounded, color: AppColors.orange),
+            ),
           IconButton(
             tooltip: 'Customize tutor',
             onPressed: _customizeTutor,
@@ -5119,15 +5291,19 @@ class _TutorScreenState extends State<TutorScreen> {
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.phonelink_lock_rounded,
-                  color: primary,
+                Icon(
+                  tutor.isReady
+                      ? Icons.phonelink_lock_rounded
+                      : Icons.auto_awesome_rounded,
+                  color: tutor.isReady ? primary : AppColors.orange,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${widget.learner.buddyName} · on-device · streamed replies',
+                    tutor.isReady
+                        ? '${widget.learner.buddyName} · on-device model active'
+                        : '${widget.learner.buddyName} · Supernova AI active',
                     style: TextStyle(
                       color: context.appText,
                       fontSize: 12,
@@ -5191,21 +5367,44 @@ class _TutorScreenState extends State<TutorScreen> {
           if (preparing) _preparingStatus(),
           if (statusMessage != null && !preparing)
             _TutorStatus(message: statusMessage!, onRetry: _enableTutor),
-          if (!enabled && !preparing)
+          if (!tutor.isReady && !preparing && messages.length <= 2)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: _enableTutor,
-                  icon: const Icon(Icons.bolt_rounded),
-                  label: const Text('Download on-device AI'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
-                    ),
+              child: InkWell(
+                onTap: _enableTutor,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.isDarkMode
+                        ? const Color(0xFF23253A)
+                        : const Color(0xFFF1F3FB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: context.appBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.bolt_rounded,
+                        color: AppColors.orange,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Optional: Download offline AI model (~450MB)',
+                          style: TextStyle(
+                            color: context.appMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 12),
+                    ],
                   ),
                 ),
               ),
@@ -5312,9 +5511,8 @@ class _TutorScreenState extends State<TutorScreen> {
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
               decoration: InputDecoration(
-                hintText: enabled
-                    ? 'Ask a Python question…'
-                    : 'Download local AI to start chatting',
+                hintText:
+                    'Ask ${widget.learner.buddyName} anything about Python…',
                 filled: true,
                 fillColor: context.isDarkMode
                     ? const Color(0xFF242844)
@@ -5395,10 +5593,17 @@ class _TutorScreenState extends State<TutorScreen> {
       });
     } catch (error) {
       if (!mounted) return;
+      final cleanMsg = error
+          .toString()
+          .replaceAll('StateError: ', '')
+          .replaceAll('Exception: ', '')
+          .replaceAll('HttpException: ', '')
+          .trim();
       setState(() {
         preparing = false;
-        statusMessage =
-            'Could not prepare the local AI model. Check your connection and free storage, confirm Android 11 or newer, then retry.';
+        statusMessage = cleanMsg.isNotEmpty
+            ? cleanMsg
+            : 'Could not prepare the local AI model. Check your connection and free storage, confirm Android 11 or newer, then retry.';
       });
     }
   }
@@ -5420,7 +5625,7 @@ class _TutorScreenState extends State<TutorScreen> {
         .skip(messages.length > 6 ? messages.length - 6 : 0)
         .map(
           (message) =>
-              '${message.isUser ? 'Learner' : 'Pixel'}: ${message.text}',
+              '${message.isUser ? 'Learner' : widget.learner.buddyName}: ${message.text}',
         )
         .toList(growable: false);
     final retrievedChunks = LessonRetriever.fromPack(

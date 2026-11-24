@@ -7,6 +7,7 @@ import 'package:llama_flutter_android/llama_flutter_android.dart';
 
 import 'model_manager.dart';
 import 'prompt_templates.dart';
+import 'supernova_ai.dart';
 
 abstract interface class TutorModel {
   Future<void> load(String modelPath);
@@ -63,12 +64,14 @@ class LlamaCppTutorModel implements TutorModel {
 
 /// Swappable offline tutor runtime. The backend explains work; it never scores it.
 class OnDeviceTutor {
-  OnDeviceTutor({TutorModel? model, ModelManager? manager})
+  OnDeviceTutor({TutorModel? model, ModelManager? manager, SupernovaEngine? supernova})
     : _model = model ?? LlamaCppTutorModel(),
-      _manager = manager ?? ModelManager();
+      _manager = manager ?? ModelManager(),
+      _supernova = supernova ?? const SupernovaEngine();
 
   final TutorModel _model;
   final ModelManager _manager;
+  final SupernovaEngine _supernova;
   bool _ready = false;
   ModelSpec? selectedModel;
   bool get isReady => _ready;
@@ -86,14 +89,16 @@ class OnDeviceTutor {
       final probe = LlamaController();
       final device = await probe.detectGpu();
       await probe.dispose();
-      if (device.freeRamBytes < 1200 * 1024 * 1024) {
+      if (device.freeRamBytes > 0 && device.freeRamBytes < 600 * 1024 * 1024) {
         throw StateError(
-          'This phone has too little free memory for on-device inference.',
+          'This phone has too little free memory (${(device.freeRamBytes / (1024 * 1024)).round()} MB) for on-device inference.',
         );
       }
       final totalRam = device.deviceLocalMemoryBytes > 0
           ? device.deviceLocalMemoryBytes
-          : device.freeRamBytes;
+          : (device.freeRamBytes > 0
+              ? device.freeRamBytes
+              : 4 * 1024 * 1024 * 1024);
       selectedModel = totalRam < 4 * 1024 * 1024 * 1024
           ? ModelCatalog.lowMemory
           : ModelCatalog.standard;
@@ -125,7 +130,15 @@ class OnDeviceTutor {
     String buddyName = 'Pixel',
     String language = 'English',
   }) async* {
-    if (!_ready) throw StateError('Prepare the on-device tutor first.');
+    if (!_ready) {
+      yield* _supernova.streamChat(
+        prompt: question,
+        userName: learnerName,
+        currentTopic: module,
+        conversationHistory: recentConversation,
+      );
+      return;
+    }
     final concepts = unlockedConcepts.isEmpty
         ? 'None yet; use only the Introduction task.'
         : unlockedConcepts.join(', ');
@@ -175,58 +188,22 @@ User Submission/Question: $question''';
         );
       }
       if (yieldedLength == 0) yield message;
-    } on TimeoutException {
-      // Use the bundled hint after the retry window expires.
-    } on FormatException {
-      try {
-        final retry = StringBuffer();
-        await for (final token
-            in _model
-                .generate(
-                  systemPrompt: await PromptTemplates().tutorSystem(
-                    learnerName: learnerName,
-                    buddyName: buddyName,
-                language: language,
-                    learnerPreference: preference,
-                  ),
-                  userPrompt:
-                      '$prompt\nThe previous response was invalid JSON. Return the required JSON object only.',
-                  maxTokens: 120,
-                  temperature: 0,
-                )
-                .timeout(const Duration(seconds: 12))) {
-          retry.write(token);
-        }
-        final decoded = jsonDecode(retry.toString()) as Map<String, dynamic>;
-        final message = decoded['message'];
-        if (message is String && message.trim().isNotEmpty) {
-          yield message;
-          return;
-        }
-        yield PreparedHintFallback.forQuestion(
-          question,
-          attempt: attempt,
-          preparedExample: preparedExample,
-        );
-      } catch (_) {
-        yield PreparedHintFallback.forQuestion(
-          question,
-          attempt: attempt,
-          preparedExample: preparedExample,
+    } catch (_) {
+      if (yieldedLength == 0) {
+        yield* _supernova.streamChat(
+          prompt: question,
+          userName: learnerName,
+          currentTopic: module,
+          conversationHistory: recentConversation,
         );
       }
-    } catch (_) {
-      yield PreparedHintFallback.forQuestion(
-        question,
-        attempt: attempt,
-        preparedExample: preparedExample,
-      );
     }
     if (yieldedLength == 0) {
-      yield PreparedHintFallback.forQuestion(
-        question,
-        attempt: attempt,
-        preparedExample: preparedExample,
+      yield* _supernova.streamChat(
+        prompt: question,
+        userName: learnerName,
+        currentTopic: module,
+        conversationHistory: recentConversation,
       );
     }
   }

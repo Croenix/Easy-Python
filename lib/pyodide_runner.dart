@@ -1,11 +1,76 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import 'answer_evaluator.dart';
+
+class _LocalPyodideServer {
+  static _LocalPyodideServer? _instance;
+  static Future<_LocalPyodideServer> get instance async =>
+      _instance ??= await _LocalPyodideServer._start();
+
+  final HttpServer _server;
+  final int port;
+
+  _LocalPyodideServer._(this._server, this.port);
+
+  Future<void> close({bool force = false}) => _server.close(force: force);
+
+  static Future<_LocalPyodideServer> _start() async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server.listen((HttpRequest request) async {
+      final response = request.response;
+      response.headers.add('Access-Control-Allow-Origin', '*');
+      response.headers.add('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      response.headers.add('Cross-Origin-Opener-Policy', 'same-origin');
+      response.headers.add('Cross-Origin-Embedder-Policy', 'require-corp');
+
+      if (request.method == 'OPTIONS') {
+        response.statusCode = HttpStatus.ok;
+        await response.close();
+        return;
+      }
+
+      try {
+        var rawPath = request.uri.path;
+        if (rawPath.startsWith('/')) rawPath = rawPath.substring(1);
+        final assetPath = Uri.decodeComponent(rawPath);
+
+        final data = await rootBundle.load(assetPath);
+        final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+
+        if (assetPath.endsWith('.html')) {
+          response.headers.contentType = ContentType.html;
+        } else if (assetPath.endsWith('.js')) {
+          response.headers.contentType = ContentType('application', 'javascript', charset: 'utf-8');
+        } else if (assetPath.endsWith('.wasm')) {
+          response.headers.contentType = ContentType('application', 'wasm');
+        } else if (assetPath.endsWith('.json')) {
+          response.headers.contentType = ContentType.json;
+        } else if (assetPath.endsWith('.zip')) {
+          response.headers.contentType = ContentType('application', 'zip');
+        } else {
+          response.headers.contentType = ContentType.binary;
+        }
+
+        response.contentLength = bytes.length;
+        response.add(bytes);
+      } catch (_) {
+        response.statusCode = HttpStatus.notFound;
+        response.write('Asset not found');
+      } finally {
+        await response.close();
+      }
+    });
+
+    return _LocalPyodideServer._(server, server.port);
+  }
+}
 
 class PyodideRunner extends StatefulWidget {
   const PyodideRunner({super.key, this.onReady});
@@ -32,7 +97,9 @@ class PyodideRunnerState extends State<PyodideRunner> {
         NavigationDelegate(
           onNavigationRequest: (request) =>
               request.url.startsWith('file:') ||
-                  request.url.startsWith('about:')
+                  request.url.startsWith('about:') ||
+                  request.url.startsWith('http://127.0.0.1:') ||
+                  request.url.startsWith('http://localhost:')
               ? NavigationDecision.navigate
               : NavigationDecision.prevent,
         ),
@@ -42,7 +109,22 @@ class PyodideRunnerState extends State<PyodideRunner> {
       android.setAllowFileAccess(true);
       android.setAllowContentAccess(true);
     }
-    _controller = controller..loadFlutterAsset('assets/pyodide/worker.html');
+    _controller = controller;
+    _startAndLoad();
+  }
+
+  Future<void> _startAndLoad() async {
+    try {
+      final server = await _LocalPyodideServer.instance;
+      if (!mounted) return;
+      await _controller.loadRequest(
+        Uri.parse('http://127.0.0.1:${server.port}/assets/pyodide/worker.html'),
+      );
+    } catch (_) {
+      if (mounted) {
+        await _controller.loadFlutterAsset('assets/pyodide/worker.html');
+      }
+    }
   }
 
   Future<CodeRunResult> run(
