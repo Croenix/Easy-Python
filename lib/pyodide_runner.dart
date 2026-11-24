@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import 'answer_evaluator.dart';
 
@@ -23,7 +24,7 @@ class PyodideRunnerState extends State<PyodideRunner> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
+    final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
       ..addJavaScriptChannel('EasyPython', onMessageReceived: _handleMessage)
@@ -35,8 +36,13 @@ class PyodideRunnerState extends State<PyodideRunner> {
               ? NavigationDecision.navigate
               : NavigationDecision.prevent,
         ),
-      )
-      ..loadFlutterAsset('assets/pyodide/worker.html');
+      );
+    if (controller.platform is AndroidWebViewController) {
+      final android = controller.platform as AndroidWebViewController;
+      android.setAllowFileAccess(true);
+      android.setAllowContentAccess(true);
+    }
+    _controller = controller..loadFlutterAsset('assets/pyodide/worker.html');
   }
 
   Future<CodeRunResult> run(

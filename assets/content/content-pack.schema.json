@@ -1,38 +1,114 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://easy-python.local/schemas/content-pack-v1.json",
-  "title": "Easy Python versioned content pack",
+  "$id": "https://easy-python.local/schemas/content-pack-v2.json",
+  "title": "Easy Python versioned content pack with stages and tracks",
   "type": "object",
-  "required": ["schemaVersion", "id", "version", "language", "tasks"],
+  "required": ["schemaVersion", "id", "version", "language"],
   "properties": {
-    "schemaVersion": {"const": 1},
+    "schemaVersion": {"type": "integer", "enum": [1, 2]},
     "id": {"type": "string", "minLength": 1},
     "version": {"type": "integer", "minimum": 1},
     "language": {"type": "string", "minLength": 2},
     "course": {"type": "string"},
+    "stages": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/stage"}
+    },
     "tasks": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "title", "order", "minutes", "overview", "lesson", "examples", "practicals", "project"],
-        "properties": {
-          "id": {"type": "string", "minLength": 1},
-          "title": {"type": "string", "minLength": 1},
-          "order": {"type": "integer", "minimum": 1},
-          "minutes": {"type": "integer", "minimum": 1},
-          "overview": {"type": "string", "minLength": 1},
-          "lesson": {"type": "array", "items": {"$ref": "#/$defs/section"}},
-          "examples": {"type": "array", "items": {"$ref": "#/$defs/example"}},
-          "practicals": {"type": "array", "items": {"$ref": "#/$defs/practical"}},
-          "project": {"$ref": "#/$defs/project"}
-        }
-      }
+      "items": {"$ref": "#/$defs/task"}
     }
   },
   "$defs": {
-    "section": {"type": "object", "required": ["heading", "body"], "properties": {"heading": {"type": "string"}, "body": {"type": "string"}}},
-    "example": {"type": "object", "required": ["title", "code", "output", "explanation"], "properties": {"title": {"type": "string"}, "code": {"type": "string"}, "output": {"type": "string"}, "explanation": {"type": "string"}}},
-    "practical": {"type": "object", "required": ["id", "type", "prompt"], "properties": {"id": {"type": "string"}, "type": {"enum": ["yesNo", "multipleChoice", "code", "fixTheBug", "shortAnswer"]}, "prompt": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}}, "answer": {"type": "string"}, "requiredKeywords": {"type": "array", "items": {"type": "string"}}, "tests": {"type": "array"}}},
-    "project": {"type": "object", "required": ["title", "scenario", "friendPrompt", "steps", "tests"], "properties": {"title": {"type": "string"}, "scenario": {"type": "string"}, "friendPrompt": {"type": "string"}, "steps": {"type": "array", "items": {"type": "string"}}, "tests": {"type": "array"}}}
+    "stage": {
+      "type": "object",
+      "required": ["id", "stageNumber", "title", "subtitle", "tasks"],
+      "properties": {
+        "id": {"type": "string"},
+        "stageNumber": {"type": "integer"},
+        "title": {"type": "string"},
+        "subtitle": {"type": "string"},
+        "estimatedHours": {"type": "integer"},
+        "badge": {"type": "string"},
+        "projects": {"type": "array"},
+        "tasks": {"type": "array", "items": {"$ref": "#/$defs/task"}},
+        "tracks": {"type": "array", "items": {"$ref": "#/$defs/track"}}
+      }
+    },
+    "track": {
+      "type": "object",
+      "required": ["id", "title", "subtitle", "description", "icon", "capstone"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "subtitle": {"type": "string"},
+        "description": {"type": "string"},
+        "icon": {"type": "string"},
+        "technologies": {"type": "array", "items": {"type": "string"}},
+        "capstone": {"type": "object"}
+      }
+    },
+    "task": {
+      "type": "object",
+      "required": ["id", "title", "order", "minutes", "overview", "lesson", "examples", "practicals", "project"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "order": {"type": "integer", "minimum": 1},
+        "minutes": {"type": "integer", "minimum": 1},
+        "stageId": {"type": "string"},
+        "subtitle": {"type": "string"},
+        "overview": {"type": "string", "minLength": 1},
+        "lesson": {"type": "array", "items": {"$ref": "#/$defs/section"}},
+        "examples": {"type": "array", "items": {"$ref": "#/$defs/example"}},
+        "practicals": {"type": "array", "items": {"$ref": "#/$defs/practical"}},
+        "project": {"$ref": "#/$defs/project"}
+      }
+    },
+    "section": {
+      "type": "object",
+      "required": ["heading", "body"],
+      "properties": {
+        "heading": {"type": "string"},
+        "body": {"type": "string"}
+      }
+    },
+    "example": {
+      "type": "object",
+      "required": ["title", "code", "output", "explanation"],
+      "properties": {
+        "title": {"type": "string"},
+        "code": {"type": "string"},
+        "output": {"type": "string"},
+        "explanation": {"type": "string"}
+      }
+    },
+    "practical": {
+      "type": "object",
+      "required": ["id", "type", "prompt"],
+      "properties": {
+        "id": {"type": "string"},
+        "type": {"enum": ["yesNo", "multipleChoice", "code", "fixTheBug", "shortAnswer"]},
+        "prompt": {"type": "string"},
+        "options": {"type": "array", "items": {"type": "string"}},
+        "answer": {"type": "string"},
+        "requiredKeywords": {"type": "array", "items": {"type": "string"}},
+        "tests": {"type": "array"},
+        "aiExplanation": {"type": "string"},
+        "scenario": {"type": "string"},
+        "commandPrompt": {"type": "string"}
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["title", "scenario", "friendPrompt", "steps", "tests"],
+      "properties": {
+        "title": {"type": "string"},
+        "scenario": {"type": "string"},
+        "friendPrompt": {"type": "string"},
+        "steps": {"type": "array", "items": {"type": "string"}},
+        "tests": {"type": "array"}
+      }
+    }
   }
 }

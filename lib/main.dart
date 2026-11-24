@@ -226,10 +226,13 @@ const lessons = <Lesson>[
   ),
 ];
 
+enum TaskStatus { locked, current, completed, quickReview }
+
 class LearnerState extends ChangeNotifier {
   static const storageKey = 'pypath.mobile.v1';
   bool onboarded = false;
   String username = 'friend';
+  String get name => username;
   ThemeMode themeMode = ThemeMode.system;
   String goal = 'Just curious';
   String dailyTime = '30 min';
@@ -243,6 +246,8 @@ class LearnerState extends ChangeNotifier {
   String language = 'English';
   String buddyName = 'Pixel';
   String tutorInstructions = '';
+  String selectedStage4Track = 'web';
+  final Set<String> quickReviewTasks = {};
   final adaptation = PersonalizationState();
   int xp = 0;
   int streak = 0;
@@ -269,11 +274,15 @@ class LearnerState extends ChangeNotifier {
       : 'Newbie';
   double masteryFor(String topicId) => adaptation.mastery(topicId);
   int get lessonsPerDay => PersonalizationEngine.lessonsPerDay(dailyTime);
-  DateTime get estimatedFinishDate => PersonalizationEngine.estimatedFinishDate(
-    from: DateTime.now(),
-    remainingLessons: lessons.length - completed.length,
-    dailyTime: dailyTime,
-  );
+  DateTime get estimatedFinishDate {
+    final total = activeContentPack?.tasks.length ?? lessons.length;
+    final remaining = (total - completed.length).clamp(1, 100);
+    return PersonalizationEngine.estimatedFinishDate(
+      from: DateTime.now(),
+      remainingLessons: remaining,
+      dailyTime: dailyTime,
+    );
+  }
   int get nextRankXp => xp < 500
       ? 500
       : xp < 1500
@@ -295,6 +304,41 @@ class LearnerState extends ChangeNotifier {
   int get dueReviews => completed.length > seenReviews.length
       ? completed.length - seenReviews.length
       : 0;
+
+  double get overallRoadmapProgress {
+    final tasks = activeContentPack?.tasks ?? const <ContentTask>[];
+    if (tasks.isEmpty) return (completed.length / 16).clamp(0.0, 1.0);
+    final done = tasks.where((t) => completed.contains(t.id)).length;
+    return (done / tasks.length).clamp(0.0, 1.0);
+  }
+
+  int get currentActiveRoadmapIndex {
+    final tasks = activeContentPack?.tasks ?? const <ContentTask>[];
+    if (tasks.isEmpty) return selectedLesson.clamp(0, lessons.length - 1);
+    final idx = tasks.indexWhere((t) => !completed.contains(t.id));
+    return idx != -1 ? idx : tasks.length - 1;
+  }
+
+  TaskStatus taskStatus(String taskId, int globalIndex, List<ContentTask> allTasks) {
+    if (completed.contains(taskId)) {
+      if (quickReviewTasks.contains(taskId)) return TaskStatus.quickReview;
+      return TaskStatus.completed;
+    }
+    final firstUncompleted = allTasks.indexWhere((t) => !completed.contains(t.id));
+    if (firstUncompleted == -1 || globalIndex == firstUncompleted || globalIndex <= selectedLesson) {
+      return TaskStatus.current;
+    }
+    if (globalIndex == 0 || (globalIndex > 0 && completed.contains(allTasks[globalIndex - 1].id))) {
+      return TaskStatus.current;
+    }
+    return TaskStatus.locked;
+  }
+
+  double stageProgress(CourseStage stage) {
+    if (stage.tasks.isEmpty) return 0.0;
+    final done = stage.tasks.where((t) => completed.contains(t.id)).length;
+    return (done / stage.tasks.length).clamp(0.0, 1.0);
+  }
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -323,6 +367,10 @@ class LearnerState extends ChangeNotifier {
       language = data['language'] as String? ?? language;
       buddyName = data['buddyName'] as String? ?? buddyName;
       tutorInstructions = data['tutorInstructions'] as String? ?? '';
+      selectedStage4Track = data['selectedStage4Track'] as String? ?? 'web';
+      quickReviewTasks.addAll(
+        (data['quickReviewTasks'] as List? ?? []).cast<String>(),
+      );
       adaptation.difficulty =
           data['difficulty'] as int? ?? adaptation.difficulty;
       adaptation.correctStreak = data['correctStreak'] as int? ?? 0;
@@ -385,6 +433,8 @@ class LearnerState extends ChangeNotifier {
         'language': language,
         'buddyName': buddyName,
         'tutorInstructions': tutorInstructions,
+        'selectedStage4Track': selectedStage4Track,
+        'quickReviewTasks': quickReviewTasks.toList(),
         'difficulty': adaptation.difficulty,
         'correctStreak': adaptation.correctStreak,
         'wrongStreak': adaptation.wrongStreak,
@@ -445,7 +495,7 @@ class LearnerState extends ChangeNotifier {
   }
 
   Future<void> completeLesson(int index) async {
-    final id = lessons[index].id;
+    final id = index < lessons.length ? lessons[index].id : 'L1-01';
     readLessons.add(id);
     _syncTaskCompletion(id);
     _recordLearningDay();
@@ -453,7 +503,10 @@ class LearnerState extends ChangeNotifier {
   }
 
   void _syncTaskCompletion(String id) {
-    final index = lessons.indexWhere((lesson) => lesson.id == id);
+    final allT = activeContentPack?.tasks ?? const <ContentTask>[];
+    final index = allT.isNotEmpty
+        ? allT.indexWhere((task) => task.id == id)
+        : lessons.indexWhere((lesson) => lesson.id == id);
     if (index < 0) return;
     final canComplete = PersonalizationEngine.taskComplete(
       lessonRead: readLessons.contains(id),
@@ -462,7 +515,8 @@ class LearnerState extends ChangeNotifier {
     );
     if (canComplete && completed.add(id)) {
       xp += 20;
-      if (index >= selectedLesson && index < lessons.length - 1) {
+      final maxLen = allT.isNotEmpty ? allT.length : lessons.length;
+      if (index >= selectedLesson && index < maxLen - 1) {
         selectedLesson = index + 1;
       }
     }
@@ -496,6 +550,19 @@ class LearnerState extends ChangeNotifier {
     );
     if (taskQuestionIds.every(answeredPracticalQuestions.contains)) {
       attemptedPracticals.add(taskId);
+    }
+    // When all questions in the practical are passed, unlock the next task
+    if (taskQuestionIds.isNotEmpty &&
+        taskQuestionIds.every(passedPracticalQuestions.contains)) {
+      readLessons.add(taskId);
+      if (completed.add(taskId)) {
+        xp += 20;
+        final allT = activeContentPack?.tasks ?? const <ContentTask>[];
+        final curIdx = allT.indexWhere((t) => t.id == taskId);
+        if (curIdx >= 0 && curIdx < allT.length - 1) {
+          selectedLesson = curIdx + 1;
+        }
+      }
     }
     _syncTaskCompletion(taskId);
     _recordLearningDay();
@@ -952,9 +1019,36 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void _prepareLearningPlan() {
     final enteredName = nameController.text.trim();
     widget.learner.username = enteredName.isEmpty ? 'friend' : enteredName;
-    widget.learner.selectedLesson = PersonalizationEngine.startIndexForLevel(
-      widget.learner.pythonLevel,
-    );
+    widget.learner.selectedStage4Track =
+        PersonalizationEngine.defaultStage4TrackForGoal(widget.learner.goal);
+
+    final level = widget.learner.pythonLevel;
+    final codedBefore = widget.learner.hasCodedBefore == 'Yes';
+
+    if (level == 'Advanced') {
+      final reviewIds = [
+        'L1-01', 'L1-02', 'L1-03', 'L1-04', 'L1-05', 'L1-06', 'L1-07',
+        'L2-01', 'L2-02', 'L2-03', 'L2-04', 'L2-05',
+      ];
+      widget.learner.quickReviewTasks.addAll(reviewIds);
+      widget.learner.completed.addAll(reviewIds);
+      widget.learner.selectedLesson = 12; // Stage 3 Topic 13 (0-indexed: 12)
+    } else if (level == 'Intermediate') {
+      final reviewIds = [
+        'L1-01', 'L1-02', 'L1-03', 'L1-04', 'L1-05', 'L1-06', 'L1-07',
+      ];
+      widget.learner.quickReviewTasks.addAll(reviewIds);
+      widget.learner.completed.addAll(reviewIds);
+      widget.learner.selectedLesson = 7; // Stage 2 Topic 8 (0-indexed: 7)
+    } else if (codedBefore) {
+      final reviewIds = ['L1-01', 'L1-02'];
+      widget.learner.quickReviewTasks.addAll(reviewIds);
+      widget.learner.completed.addAll(reviewIds);
+      widget.learner.selectedLesson = 2;
+    } else {
+      widget.learner.selectedLesson = 0;
+    }
+
     widget.learner.adaptation.difficulty =
         PersonalizationEngine.startingDifficulty(widget.learner.pythonLevel);
   }
@@ -1205,7 +1299,7 @@ class _MainShellState extends State<MainShell> {
           ),
           NavigationDestination(
             icon: Icon(Icons.alt_route_rounded),
-            label: 'Path',
+            label: 'Roadmap',
           ),
           NavigationDestination(
             icon: Icon(Icons.fitness_center_outlined),
@@ -1577,7 +1671,7 @@ class _ContinueBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 190,
+    height: 204,
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       gradient: const LinearGradient(
@@ -1641,7 +1735,7 @@ class _ContinueBanner extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(19, 17, 155, 16),
+          padding: const EdgeInsets.fromLTRB(18, 14, 115, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1661,17 +1755,17 @@ class _ContinueBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               const Text(
                 'Keep your\nPython journey going',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 19,
                   height: 1.15,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               Text(
                 '${lesson.title}  ·  ${lesson.minutes} min',
                 maxLines: 1,
@@ -1692,12 +1786,13 @@ class _ContinueBanner extends StatelessWidget {
                       style: FilledButton.styleFrom(
                         backgroundColor: coral,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             'Continue',
@@ -1706,19 +1801,23 @@ class _ContinueBanner extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          SizedBox(width: 5),
-                          Icon(Icons.arrow_forward_rounded, size: 15),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_rounded, size: 14),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 9),
-                  Text(
-                    '$completed / 16 lessons',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: .86),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '$completed / 16 lessons',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .86),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -2141,7 +2240,7 @@ class _SectionLabel extends StatelessWidget {
   );
 }
 
-class PathScreen extends StatelessWidget {
+class PathScreen extends StatefulWidget {
   const PathScreen({
     super.key,
     required this.learner,
@@ -2150,262 +2249,864 @@ class PathScreen extends StatelessWidget {
   final LearnerState learner;
   final ValueChanged<int> onOpenLesson;
 
-  static const levelTitles = [
-    'Core Skills',
-    'Intermediate',
-    'Advanced',
-    'Specialize',
-  ];
-  static const levelLessons = [20, 30, 30, 24];
-  static const levelProjects = [
-    'Calculator with functions',
-    'Tic-Tac-Toe with tests',
-    'Async web scraper',
-    'Your own capstone app',
-  ];
+  @override
+  State<PathScreen> createState() => _PathScreenState();
+}
+
+class _PathScreenState extends State<PathScreen> {
+  final Map<String, bool> _expanded = {
+    'stage-1': true,
+    'stage-2': false,
+    'stage-3': false,
+    'stage-4': false,
+  };
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: ListView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Your learning journey',
-                    style: TextStyle(
-                      color: context.appText,
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -.4,
+  void initState() {
+    super.initState();
+    _autoExpandActiveStage();
+  }
+
+  void _autoExpandActiveStage() {
+    final stages = activeContentPack?.stages ?? const <CourseStage>[];
+    final allTasks = activeContentPack?.tasks ?? const <ContentTask>[];
+    final activeIdx = widget.learner.currentActiveRoadmapIndex;
+    if (activeIdx >= 0 && activeIdx < allTasks.length) {
+      final activeStageId = allTasks[activeIdx].stageId;
+      for (final s in stages) {
+        _expanded[s.id] = (s.id == activeStageId);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stages = activeContentPack?.stages ?? const <CourseStage>[];
+    final allTasks = activeContentPack?.tasks ?? const <ContentTask>[];
+    final activeIndex = widget.learner.currentActiveRoadmapIndex;
+    final activeTask = (activeIndex >= 0 && activeIndex < allTasks.length)
+        ? allTasks[activeIndex]
+        : null;
+    final overallProgress = widget.learner.overallRoadmapProgress;
+    final finishDate = widget.learner.estimatedFinishDate;
+    final finishFormatted =
+        '${finishDate.year}-${finishDate.month.toString().padLeft(2, '0')}-${finishDate.day.toString().padLeft(2, '0')}';
+
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PYTHON MASTERY ROADMAP',
+                      style: TextStyle(
+                        color: primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'A clear path from first line to real projects',
-                    style: TextStyle(color: context.appMuted, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: context.appSurface,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x160F2860),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.route_rounded, color: primary),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        _PathLevelHero(
-          completed: learner.completed.length,
-          onTap: () => onOpenLesson(
-            learner.selectedLesson.clamp(0, lessons.length - 1).toInt(),
-          ),
-        ),
-        const SizedBox(height: 20),
-        const _SectionLabel('Choose a module'),
-        const SizedBox(height: 9),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _pathModules.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: .91,
-          ),
-          itemBuilder: (context, index) {
-            final module = _pathModules[index];
-            return _CourseTile(
-              module: module,
-              learner: learner,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => _ModuleDetailScreen(
-                    module: module,
-                    learner: learner,
-                    onOpenLesson: onOpenLesson,
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'From Fresher to Master',
+                      style: TextStyle(
+                        color: context.appText,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -.4,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Follow W3Schools sequence with deep, hands-on practice',
+                      style: TextStyle(color: context.appMuted, fontSize: 12.5),
+                    ),
+                  ],
                 ),
               ),
-            );
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.appSurface,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x160F2860),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.alt_route_rounded, color: primary, size: 26),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Top Overall Hero with Progress Ring & Continue Button
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF6B82FA), Color(0xFF566DE8), Color(0xFF755EF2)],
+              ),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x383955BD),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Floating Circular Progress Ring
+                    Container(
+                      width: 62,
+                      height: 62,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x280E2463),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: overallProgress,
+                            strokeWidth: 5.5,
+                            strokeCap: StrokeCap.round,
+                            color: success,
+                            backgroundColor: const Color(0xFFE9EDF8),
+                          ),
+                          Text(
+                            '${(overallProgress * 100).round()}%',
+                            style: const TextStyle(
+                              color: AppColors.ink,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: .2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'OVERALL PROGRESS',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            activeTask != null
+                                ? 'Next: ${activeTask.title}'
+                                : 'You are all caught up!',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${widget.learner.completed.length} of ${allTasks.length} topics mastered',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: .88),
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Pace: ${widget.learner.dailyTime}/day  ·  Est. finish: $finishFormatted',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .85),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => widget.onOpenLesson(activeIndex),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 19),
+                      label: const Text('Continue learning'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accent,
+                        foregroundColor: AppColors.ink,
+                        elevation: 3,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+
+          Row(
+            children: [
+              const Expanded(child: _SectionLabel('4-Stage Journey')),
+              Text(
+                'Fresher to Master',
+                style: TextStyle(
+                  color: context.appMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // The 4 Stage Cards
+          for (final stage in stages)
+            _buildStageCard(context, stage, allTasks),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStageCard(
+    BuildContext context,
+    CourseStage stage,
+    List<ContentTask> allTasks,
+  ) {
+    final isExpanded = _expanded[stage.id] ?? false;
+    final progress = widget.learner.stageProgress(stage);
+    final isFinished = progress >= 1.0;
+    final isStage4 = stage.stageNumber == 4;
+
+    // Gradient & icon styling per stage
+    final (badgeColor, badgeIcon, gradientColors) = switch (stage.stageNumber) {
+      1 => (
+        accent,
+        Icons.rocket_launch_rounded,
+        [const Color(0xFFFFF2E6), const Color(0xFFFFE5D0)],
+      ),
+      2 => (
+        success,
+        Icons.layers_rounded,
+        [const Color(0xFFE6F8F3), const Color(0xFFD3F2E9)],
+      ),
+      3 => (
+        coral,
+        Icons.bolt_rounded,
+        [const Color(0xFFFFEFEF), const Color(0xFFFFDEDD)],
+      ),
+      _ => (
+        primary,
+        Icons.military_tech_rounded,
+        [const Color(0xFFEEF3FF), const Color(0xFFDCE6FF)],
+      ),
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isExpanded
+              ? primary.withValues(alpha: .35)
+              : context.appBorder,
+          width: isExpanded ? 1.5 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: context.isDarkMode
+                ? Colors.black.withValues(alpha: .25)
+                : const Color(0x120F2860),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Stage Header (tap to toggle expansion)
+          InkWell(
+            onTap: () => setState(() => _expanded[stage.id] = !isExpanded),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Row(
+                children: [
+                  // 3D Styled Badge Icon
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: context.isDarkMode
+                            ? [badgeColor.withValues(alpha: .3), badgeColor.withValues(alpha: .15)]
+                            : gradientColors,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: badgeColor.withValues(alpha: .2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Icon(badgeIcon, color: badgeColor, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'STAGE ${stage.stageNumber}  ·  ${stage.estimatedHours} HOURS',
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: .9,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          stage.title,
+                          style: TextStyle(
+                            color: context.appText,
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isStage4
+                              ? 'Track: ${_trackLabel(widget.learner.selectedStage4Track)}'
+                              : '${stage.tasks.length} topics · ${stage.projects.length} projects',
+                          style: TextStyle(
+                            color: context.appMuted,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Circular Progress Ring for Stage
+                  SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 4.2,
+                          strokeCap: StrokeCap.round,
+                          color: isFinished ? success : badgeColor,
+                          backgroundColor: context.appSubtle,
+                        ),
+                        if (isFinished)
+                          const Icon(Icons.check_rounded, color: success, size: 18)
+                        else
+                          Text(
+                            '${(progress * 100).round()}%',
+                            style: TextStyle(
+                              color: context.appText,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: context.appMuted,
+                    size: 24,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Expanded Content
+          if (isExpanded) ...[
+            const Divider(height: 1),
+
+            // Projects Pill / Summary
+            if (stage.projects.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: context.isDarkMode
+                      ? const Color(0xFF222642)
+                      : const Color(0xFFF6F8FE),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.appBorder),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.emoji_events_outlined, color: badgeColor, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Projects: ${stage.projects.map((p) => p['title']).join(' · ')}',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: context.appText,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Stage 4 Track Selection Cards
+            if (isStage4)
+              _buildStage4TrackSelector(context, stage, allTasks)
+            else
+              // Stage 1, 2, 3 Task List
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                child: Column(
+                  children: [
+                    for (final task in stage.tasks)
+                      _buildTaskRow(context, task, allTasks),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskRow(
+    BuildContext context,
+    ContentTask task,
+    List<ContentTask> allTasks,
+  ) {
+    final globalIndex = allTasks.indexWhere((t) => t.id == task.id);
+    final status = widget.learner.taskStatus(task.id, globalIndex, allTasks);
+    final isLocked = status == TaskStatus.locked;
+    final isCurrent = status == TaskStatus.current;
+
+    final leadingIcon = switch (status) {
+      TaskStatus.completed => Icons.check_circle_rounded,
+      TaskStatus.quickReview => Icons.star_rounded,
+      TaskStatus.current => Icons.play_circle_fill_rounded,
+      TaskStatus.locked => Icons.lock_outline_rounded,
+    };
+
+    final iconColor = switch (status) {
+      TaskStatus.completed => success,
+      TaskStatus.quickReview => accent,
+      TaskStatus.current => primary,
+      TaskStatus.locked => context.appMuted.withValues(alpha: .5),
+    };
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: isCurrent
+            ? primary.withValues(alpha: .06)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: isCurrent
+            ? Border.all(color: primary.withValues(alpha: .25))
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          leading: Icon(leadingIcon, color: iconColor, size: 26),
+          title: Text(
+            '${task.order}. ${task.title}',
+            style: TextStyle(
+              color: isLocked ? context.appMuted : context.appText,
+              fontWeight: isCurrent ? FontWeight.w900 : FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+          subtitle: Text(
+            '${task.minutes} min · Practical + Project',
+            style: TextStyle(color: context.appMuted, fontSize: 10.5),
+          ),
+          trailing: _buildStatusPill(status),
+          onTap: () {
+            if (isLocked) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Complete the preceding topics to unlock this lesson.'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            } else {
+              widget.onOpenLesson(globalIndex);
+            }
           },
         ),
-        const SizedBox(height: 17),
-        const _SectionLabel('Coming up next'),
-        const SizedBox(height: 8),
-        for (var i = 0; i < levelTitles.length; i++)
-          _LockedLevelPreview(
-            index: i + 2,
-            title: levelTitles[i],
-            count: levelLessons[i],
-            project: levelProjects[i],
-          ),
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
-class _PathLevelHero extends StatelessWidget {
-  const _PathLevelHero({required this.completed, required this.onTap});
-  final int completed;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(17),
-    decoration: BoxDecoration(
-      color: context.appSurface,
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: context.appBorder),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x100F2860),
-          blurRadius: 12,
-          offset: Offset(0, 5),
-        ),
-      ],
+  Widget _buildStatusPill(TaskStatus status) => switch (status) {
+    TaskStatus.completed => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: success.withValues(alpha: .15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text(
+        'Done ✓',
+        style: TextStyle(color: success, fontSize: 10.5, fontWeight: FontWeight.w800),
+      ),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: context.isDarkMode
-                    ? const Color(0xFF273455)
-                    : const Color(0xFFEAF0FF),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.flag_rounded, color: primary),
+    TaskStatus.quickReview => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: .18),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text(
+        'Review ★',
+        style: TextStyle(color: accent, fontSize: 10.5, fontWeight: FontWeight.w800),
+      ),
+    ),
+    TaskStatus.current => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: primary,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text(
+        'Start',
+        style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+      ),
+    ),
+    TaskStatus.locked => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text(
+        'Locked',
+        style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w700),
+      ),
+    ),
+  };
+
+  Widget _buildStage4TrackSelector(
+    BuildContext context,
+    CourseStage stage,
+    List<ContentTask> allTasks,
+  ) {
+    final selectedId = widget.learner.selectedStage4Track;
+    CourseTrack? currentTrack;
+    for (final t in stage.tracks) {
+      if (t.id == selectedId) currentTrack = t;
+    }
+    currentTrack ??= stage.tracks.isNotEmpty ? stage.tracks.first : null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'SELECT YOUR SPECIALIZATION TRACK',
+            style: TextStyle(
+              color: primary,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .9,
             ),
-            const SizedBox(width: 11),
-            Expanded(
+          ),
+          const SizedBox(height: 8),
+
+          // Track Selection Carousel
+          SizedBox(
+            height: 125,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: stage.tracks.length,
+              itemBuilder: (context, idx) {
+                final track = stage.tracks[idx];
+                final isSelected = track.id == selectedId;
+                final trackIcon = switch (track.id) {
+                  'web' => Icons.language_rounded,
+                  'data' => Icons.analytics_rounded,
+                  'automation' => Icons.smart_toy_rounded,
+                  'ai_ml' => Icons.psychology_rounded,
+                  'security' => Icons.security_rounded,
+                  _ => Icons.code_rounded,
+                };
+
+                return Container(
+                  width: 175,
+                  margin: const EdgeInsets.only(right: 12),
+                  child: Card(
+                    color: isSelected
+                        ? (context.isDarkMode ? const Color(0xFF263256) : const Color(0xFFEBF1FF))
+                        : context.appSurface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      side: BorderSide(
+                        color: isSelected ? primary : context.appBorder,
+                        width: isSelected ? 2.0 : 1.0,
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () async {
+                        setState(() {
+                          widget.learner.selectedStage4Track = track.id;
+                        });
+                        await widget.learner.save();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(trackIcon, color: isSelected ? primary : context.appMuted, size: 22),
+                                const Spacer(),
+                                if (isSelected)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: primary,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'Active',
+                                      style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              track.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: context.appText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Active Track Description & Capstone
+          if (currentTrack != null) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: context.isDarkMode ? const Color(0xFF20243C) : const Color(0xFFF8F9FE),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: context.appBorder),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'LEVEL 1',
-                    style: TextStyle(
-                      color: primary,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.star_rounded, color: accent, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Active Track: ${currentTrack.title}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: context.appText,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 3),
+                  const SizedBox(height: 6),
                   Text(
-                    'Foundations',
-                    style: TextStyle(
-                      color: context.appText,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
+                    currentTrack.description,
+                    style: TextStyle(fontSize: 11.5, height: 1.4, color: context.appMuted),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: currentTrack.technologies
+                        .map(
+                          (tech) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: .12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              tech,
+                              style: const TextStyle(
+                                color: primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Capstone Project Box
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: context.isDarkMode
+                            ? [const Color(0xFF322A4E), const Color(0xFF26203E)]
+                            : [const Color(0xFFFFF7ED), const Color(0xFFFFEED9)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: accent.withValues(alpha: .3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.military_tech_rounded, color: accent, size: 22),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Capstone: ${currentTrack.capstone['title'] ?? 'Real-World Project'}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                  color: context.appText,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currentTrack.capstone['scenario'] as String? ?? '',
+                          style: TextStyle(fontSize: 11.5, height: 1.45, color: context.appText),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Starting ${currentTrack?.title} Capstone Project!'),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.rocket_launch_rounded, size: 16),
+                            label: const Text('Start Capstone Project'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: accent,
+                              foregroundColor: AppColors.ink,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            Text(
-              '$completed / 16',
-              style: TextStyle(
-                color: context.appMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 13),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: (completed / 16).clamp(0.0, 1.0),
-            minHeight: 7,
-            color: success,
-            backgroundColor: context.appSubtle,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Write small programs with input, logic, and output.',
-                style: TextStyle(color: context.appMuted, fontSize: 12),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: onTap,
-              icon: const Icon(Icons.play_arrow_rounded, size: 17),
-              label: const Text('Continue'),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+            const SizedBox(height: 12),
 
-class _LockedLevelPreview extends StatelessWidget {
-  const _LockedLevelPreview({
-    required this.index,
-    required this.title,
-    required this.count,
-    required this.project,
-  });
-  final int index;
-  final String title;
-  final int count;
-  final String project;
-  @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: 9),
-    child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: context.appSubtle,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Icon(Icons.lock_outline_rounded, color: context.appMuted),
+            // Stage 4 Foundation Tasks
+            for (final task in stage.tasks)
+              _buildTaskRow(context, task, allTasks),
+          ],
+        ],
       ),
-      title: Text(
-        'Level $index · $title',
-        style: TextStyle(
-          color: context.appText,
-          fontWeight: FontWeight.w800,
-          fontSize: 13,
-        ),
-      ),
-      subtitle: Text(
-        '$count lessons · project: $project',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: context.appMuted, fontSize: 10),
-      ),
-      trailing: Icon(Icons.chevron_right_rounded, color: context.appMuted),
-    ),
-  );
+    );
+  }
+
+  String _trackLabel(String id) => switch (id) {
+    'web' => 'Web Development',
+    'data' => 'Data Science & Analytics',
+    'automation' => 'Automation & Scripting',
+    'ai_ml' => 'AI & Machine Learning',
+    'security' => 'Cybersecurity',
+    _ => 'Web Development',
+  };
 }
 
 class LessonScreen extends StatelessWidget {
@@ -2422,19 +3123,27 @@ class LessonScreen extends StatelessWidget {
   final ValueChanged<String> onAskTutor;
   @override
   Widget build(BuildContext context) {
-    final lesson = lessons[index];
-    ContentTask? contentTask;
-    for (final candidate in activeContentPack?.tasks ?? const <ContentTask>[]) {
-      if (candidate.id == lesson.id) contentTask = candidate;
-    }
-    final guide = lessonGuides[lesson.id]!;
-    final done = learner.completed.contains(lesson.id);
-    final read = learner.readLessons.contains(lesson.id);
+    final allTasks = activeContentPack?.tasks ?? const <ContentTask>[];
+    final ContentTask? contentTask = (index >= 0 && index < allTasks.length)
+        ? allTasks[index]
+        : null;
+    final lesson = (index >= 0 && index < lessons.length)
+        ? lessons[index]
+        : (contentTask != null
+            ? Lesson(contentTask.id, contentTask.title, contentTask.stageId, contentTask.minutes, contentTask.overview, '')
+            : lessons[0]);
+    final guide = lessonGuides[contentTask?.id ?? lesson.id] ??
+        (contentTask != null
+            ? contentTask.toGuide()
+            : lessonGuides['L1-01']!);
+    final done = learner.completed.contains(contentTask?.id ?? lesson.id);
+    final read = learner.readLessons.contains(contentTask?.id ?? lesson.id);
     final name = learner.username.trim().isEmpty ? 'friend' : learner.username;
     final friendProblem = guide.friendProblem.replaceAll('{name}', name);
+    final totalCount = allTasks.isNotEmpty ? allTasks.length : lessons.length;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Lesson ${index + 1} of ${lessons.length}'),
+        title: Text('Topic ${index + 1} of $totalCount'),
         actions: [
           IconButton(
             icon: const Icon(Icons.more_horiz_rounded),
@@ -2450,7 +3159,7 @@ class LessonScreen extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
-                  value: (index + (done ? 1 : .25)) / lessons.length,
+                  value: (index + (done ? 1 : .25)) / totalCount,
                   minHeight: 7,
                   color: success,
                   backgroundColor: context.appSubtle,
@@ -2462,7 +3171,7 @@ class LessonScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
                 children: [
                   Text(
-                    'LEVEL 1  ·  ${lesson.module.toUpperCase()}  ·  ${index + 1}/${lessons.length}',
+                    '${(contentTask?.stageId ?? "stage-1").toUpperCase()}  ·  TOPIC ${index + 1}/$totalCount',
                     style: const TextStyle(
                       color: primary,
                       fontSize: 11,
@@ -2539,7 +3248,7 @@ class LessonScreen extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: contentTask == null
                           ? () => _openPractice(context)
-                          : () => _openQuestions(context, contentTask!),
+                          : () => _openQuestions(context, contentTask),
                       icon: Icon(
                         contentTask == null
                             ? Icons.code_rounded
@@ -2675,8 +3384,15 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     final isCode =
         !isFinished &&
         (question.type == 'code' || question.type == 'fixTheBug');
+    final isPrompt = !isFinished &&
+        (isCode ||
+            (question.commandPrompt != null &&
+                question.commandPrompt!.isNotEmpty) ||
+            question.type == 'shortAnswer');
+    final userName = widget.learner.name.trim().isEmpty ? 'friend' : widget.learner.name.trim();
+
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.task.title} · Practice')),
+      appBar: AppBar(title: Text('${widget.task.title} · Practical')),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -2689,14 +3405,28 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
                     children: [
-                      Text(
-                        'QUESTION ${questionIndex + 1} OF ${widget.task.practicals.length}',
-                        style: const TextStyle(
-                          color: primary,
-                          fontSize: 11,
-                          letterSpacing: 1,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      // Stage & Question Progress
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'QUESTION ${questionIndex + 1} OF ${widget.task.practicals.length}',
+                            style: const TextStyle(
+                              color: primary,
+                              fontSize: 11,
+                              letterSpacing: 1,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            '${((questionIndex + (evaluation?.isCorrect == true ? 1 : 0)) / widget.task.practicals.length * 100).round()}% done',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: context.appMuted,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       ClipRRect(
@@ -2710,96 +3440,375 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                           color: success,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
+
+                      // Friendly AI Agent Greeting
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: context.isDarkMode
+                              ? const Color(0xFF1E2838)
+                              : const Color(0xFFEDF4FD),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: primary.withValues(
+                              alpha: context.isDarkMode ? 0.35 : 0.25,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: primary.withValues(alpha: 0.15),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.smart_toy_rounded,
+                                  color: primary,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${widget.learner.buddyName} (AI Coach)',
+                                    style: const TextStyle(
+                                      color: primary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    (question.scenario != null &&
+                                            question.scenario!.isNotEmpty)
+                                        ? 'Hey $userName! ${question.scenario}'
+                                        : 'Hey $userName, let\'s tackle this hands-on challenge together!',
+                                    style: TextStyle(
+                                      color: context.appText,
+                                      fontSize: 13.5,
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Question Prompt
                       Text(
                         question.prompt,
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 19,
                           height: 1.35,
                           color: context.appText,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 18),
+
+                      // Input Options / Terminal
                       if (question.type == 'yesNo')
                         _choiceOptions(const ['Yes', 'No'])
                       else if (question.type == 'multipleChoice')
                         _choiceOptions(question.options)
-                      else if (question.type == 'shortAnswer')
-                        TextField(
-                          controller: responseController,
-                          minLines: 2,
-                          maxLines: 5,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
-                            labelText: 'Your answer',
-                            hintText: 'Write a short answer in your own words',
-                          ),
-                        )
-                      else ...[
+                      else if (isPrompt) ...[
+                        // Command Prompt Style Terminal
                         Container(
                           decoration: BoxDecoration(
-                            color: codeColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.all(14),
-                          child: TextField(
-                            controller: responseController,
-                            minLines: 7,
-                            maxLines: 12,
-                            keyboardType: TextInputType.multiline,
-                            style: const TextStyle(
-                              color: Color(0xFFEAF0F8),
-                              fontFamily: 'monospace',
-                              fontSize: 15,
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Write Python here',
-                              hintStyle: TextStyle(color: Colors.white38),
+                            color: const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFF334155),
+                              width: 1.2,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          runnerReady
-                              ? 'Python runs on this device and works offline.'
-                              : 'Preparing the offline Python runner…',
-                          style: TextStyle(color: context.appMuted),
-                        ),
-                        if (runOutput != null)
-                          _ContentSectionCard(
-                            heading: 'Output',
-                            body: runOutput!.isEmpty
-                                ? '(no output)'
-                                : runOutput!,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF1E293B),
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(13),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFEF4444),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFF59E0B),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF10B981),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        isCode
+                                            ? 'terminal · python 3 prompt'
+                                            : 'command prompt',
+                                        style: const TextStyle(
+                                          color: Color(0xFF94A3B8),
+                                          fontSize: 11,
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 2, right: 8),
+                                      child: Text(
+                                        '>>> ',
+                                        style: TextStyle(
+                                          color: Color(0xFF38BDF8),
+                                          fontFamily: 'monospace',
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: responseController,
+                                        minLines: isCode ? 4 : 1,
+                                        maxLines: isCode ? 10 : 4,
+                                        keyboardType: isCode
+                                            ? TextInputType.multiline
+                                            : TextInputType.text,
+                                        style: const TextStyle(
+                                          color: Color(0xFFF8FAFC),
+                                          fontFamily: 'monospace',
+                                          fontSize: 15,
+                                          height: 1.45,
+                                        ),
+                                        cursorColor: const Color(0xFF38BDF8),
+                                        decoration: InputDecoration(
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.zero,
+                                          hintText: isCode
+                                              ? 'Type Python code here…'
+                                              : 'Type your answer here…',
+                                          hintStyle: const TextStyle(
+                                            color: Color(0xFF64748B),
+                                            fontFamily: 'monospace',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        if (isCode) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            runnerReady
+                                ? 'Python runs on this device and works offline.'
+                                : 'Preparing the offline Python runner…',
+                            style: TextStyle(
+                              color: context.appMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (runOutput != null)
+                            Container(
+                              margin: const EdgeInsets.only(top: 10),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0B132B),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: const Color(0xFF1C2541),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'OUTPUT',
+                                    style: TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  SelectableText(
+                                    runOutput!.isEmpty
+                                        ? '(no output)'
+                                        : runOutput!,
+                                    style: const TextStyle(
+                                      color: Color(0xFFE2E8F0),
+                                      fontFamily: 'monospace',
+                                      fontSize: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ],
+
+                      // AI Analysis Feedback
                       if (evaluation != null) ...[
                         const SizedBox(height: 16),
-                        Card(
-                          color: evaluation!.isCorrect
-                              ? (context.isDarkMode
-                                    ? const Color(0xFF173C35)
-                                    : const Color(0xFFE8F6EF))
-                              : (context.isDarkMode
-                                    ? const Color(0xFF45262D)
-                                    : const Color(0xFFFFF1EE)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Text(evaluation!.message),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: evaluation!.isCorrect
+                                ? (context.isDarkMode
+                                      ? const Color(0xFF14382F)
+                                      : const Color(0xFFE8F6EF))
+                                : (context.isDarkMode
+                                      ? const Color(0xFF452227)
+                                      : const Color(0xFFFFF1EE)),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: evaluation!.isCorrect
+                                  ? success.withValues(alpha: 0.5)
+                                  : error.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    evaluation!.isCorrect
+                                        ? Icons.check_circle_rounded
+                                        : Icons.cancel_rounded,
+                                    color: evaluation!.isCorrect
+                                        ? success
+                                        : error,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      evaluation!.isCorrect
+                                          ? 'Right! Well done, $userName.'
+                                          : 'Not quite yet, $userName.',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                        color: evaluation!.isCorrect
+                                            ? success
+                                            : error,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                evaluation!.message,
+                                style: TextStyle(
+                                  height: 1.45,
+                                  color: context.appText,
+                                ),
+                              ),
+                              if (question.aiExplanation != null &&
+                                  question.aiExplanation!.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: context.isDarkMode
+                                        ? Colors.black26
+                                        : Colors.white70,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(
+                                        Icons.info_outline_rounded,
+                                        size: 16,
+                                        color: primary,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          question.aiExplanation!,
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            height: 1.4,
+                                            color: context.appText,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         if (!evaluation!.isCorrect)
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: () => widget.onAskTutor(
-                                '${question.prompt}\nMy attempt: ${responseController.text}',
-                              ),
-                              icon: const Icon(Icons.auto_awesome_rounded),
-                              label: Text(
-                                'Ask ${widget.learner.buddyName} for a hint',
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () => widget.onAskTutor(
+                                  '${question.prompt}\nMy attempt: ${responseController.text}\nHelp me understand why this was not right.',
+                                ),
+                                icon: const Icon(Icons.auto_awesome_rounded),
+                                label: Text(
+                                  'Ask ${widget.learner.buddyName} for a hint',
+                                ),
                               ),
                             ),
                           ),
@@ -2827,7 +3836,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                               : evaluation?.isCorrect == true
                               ? questionIndex + 1 ==
                                         widget.task.practicals.length
-                                    ? 'Finish practice'
+                                    ? 'Finish practical'
                                     : 'Next question'
                               : isCode
                               ? 'Run and check'
@@ -2925,34 +3934,162 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     });
   }
 
-  Widget _finishPanel(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(26),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.celebration_rounded, color: success, size: 58),
-          const SizedBox(height: 14),
-          const Text(
-            'Nice work!',
-            style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+  Widget _finishPanel(BuildContext context) {
+    final project = widget.task.project;
+    final projectTitle = project['title'] as String? ?? 'Real-World Mini Project';
+    final projectScenario = project['scenario'] as String? ?? '';
+    final projectSteps = (project['steps'] as List<dynamic>?)?.map((s) => s.toString()).toList() ?? <String>[];
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const SizedBox(height: 10),
+        const Center(
+          child: Icon(Icons.celebration_rounded, color: success, size: 56),
+        ),
+        const SizedBox(height: 12),
+        const Center(
+          child: Text(
+            'Topic Completed!',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 8),
-          Text(
-            widget.learner.completed.contains(widget.task.id)
-                ? 'You have mastered this task.'
-                : 'You answered every practice question. Keep reviewing until your mastery reaches 70%.',
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            'You mastered the practical questions for ${widget.task.title}. The next task on your roadmap is unlocked!',
             textAlign: TextAlign.center,
+            style: TextStyle(color: context.appMuted, height: 1.4),
           ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Back to lesson'),
+        ),
+        const SizedBox(height: 24),
+
+        // Real-World Mini Project Card
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: context.isDarkMode
+                ? const Color(0xFF1E2838)
+                : const Color(0xFFF1F6FD),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
           ),
-        ],
-      ),
-    ),
-  );
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.rocket_launch_rounded,
+                      color: accent,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'REAL-WORLD MINI PROJECT',
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        Text(
+                          projectTitle,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: context.appText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (projectScenario.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  projectScenario,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.45,
+                    color: context.appText,
+                  ),
+                ),
+              ],
+              if (projectSteps.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Project Steps:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                for (final step in projectSteps)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '• ',
+                          style: TextStyle(
+                            color: primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            step,
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.4,
+                              color: context.appMuted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+        FilledButton.icon(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.alt_route_rounded),
+          label: const Text('Back to Roadmap'),
+          style: FilledButton.styleFrom(
+            backgroundColor: primary,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _SectionHeading extends StatelessWidget {

@@ -7,7 +7,8 @@
 </head>
 <body>
   <script>
-    let worker;
+    let worker = null;
+    let pyodideDirect = null;
     let ready = false;
     let pending = null;
 
@@ -17,30 +18,132 @@
       }
     }
 
+    const blockedModules = [
+      'os', 'sys', 'subprocess', 'socket', 'pathlib', 'open', 'io', 'builtins',
+      'importlib', 'urllib', 'http', 'requests', 'js', 'pyodide', 'webbrowser',
+    ];
+
+    async function initializeDirect() {
+      try {
+        if (!window.loadPyodide) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = './0.27.8/pyodide.js';
+            script.onload = resolve;
+            script.onerror = (e) => reject(new Error('Failed to load pyodide.js'));
+            document.head.appendChild(script);
+          });
+        }
+        const indexURL = new URL('./0.27.8/', window.location.href).href;
+        pyodideDirect = await loadPyodide({indexURL});
+        ready = true;
+        sendToFlutter({type: 'ready'});
+      } catch (err) {
+        sendToFlutter({type: 'workerError', error: String(err)});
+      }
+    }
+
+    async function runDirect(id, source, inputs) {
+      if (typeof source !== 'string' || source.length > 65536) {
+        return {id, type: 'result', stdout: '', stderr: '', error: 'Code is too long.'};
+      }
+      pyodideDirect.globals.set('__easy_source', source);
+      pyodideDirect.globals.set('__easy_inputs', pyodideDirect.toPy(Array.isArray(inputs) ? inputs.slice(0, 32) : []));
+      const runner = `
+import ast, builtins, contextlib, io
+
+class _EasyBlockedOperation(Exception):
+    pass
+
+_easy_original_import = builtins.__import__
+_easy_blocked = set(${JSON.stringify(blockedModules)})
+def _easy_import(name, globals=None, locals=None, fromlist=(), level=0):
+    if name.split('.')[0] in _easy_blocked:
+        raise ImportError('This module is not available in the learning runner.')
+    return _easy_original_import(name, globals, locals, fromlist, level)
+
+def _easy_no_files(*args, **kwargs):
+    raise PermissionError('File access is disabled in the learning runner.')
+
+_easy_builtins = dict(vars(builtins))
+_easy_builtins.pop('open', None)
+_easy_builtins['__import__'] = _easy_import
+_easy_input_values = list(__easy_inputs)
+def _easy_input(prompt=''):
+    if not _easy_input_values:
+        raise EOFError('No more sample input was provided.')
+    return str(_easy_input_values.pop(0))
+_easy_builtins['input'] = _easy_input
+
+_easy_output = io.StringIO()
+try:
+    _easy_tree = ast.parse(__easy_source, mode='exec')
+    for _easy_node in ast.walk(_easy_tree):
+        if isinstance(_easy_node, (ast.Import, ast.ImportFrom)):
+            _easy_names = [alias.name.split('.')[0] for alias in _easy_node.names] if isinstance(_easy_node, ast.Import) else [_easy_node.module.split('.')[0] if _easy_node.module else '']
+            if any(name in _easy_blocked for name in _easy_names):
+                raise ImportError('This module is not available in the learning runner.')
+        if isinstance(_easy_node, ast.Call) and isinstance(_easy_node.func, ast.Name) and _easy_node.func.id in ('open', 'eval', 'exec', 'compile'):
+            if _easy_node.func.id != 'exec':
+                raise PermissionError('This operation is disabled in the learning runner.')
+    _easy_namespace = {'__builtins__': _easy_builtins}
+    with contextlib.redirect_stdout(_easy_output):
+        exec(__easy_source, _easy_namespace)
+    _easy_stdout = _easy_output.getvalue()
+    _easy_error = ''
+except Exception as e:
+    _easy_stdout = _easy_output.getvalue()
+    _easy_error = f"{type(e).__name__}: {e}"
+finally:
+    _easy_output.close()
+`;
+      try {
+        await pyodideDirect.runPythonAsync(runner);
+        const stdout = pyodideDirect.globals.get('_easy_stdout') || '';
+        const err = pyodideDirect.globals.get('_easy_error') || '';
+        return {id, type: 'result', stdout, stderr: err ? err + '\n' : '', error: err || undefined};
+      } catch (err) {
+        return {id, type: 'result', stdout: '', stderr: String(err), error: String(err)};
+      }
+    }
+
     function startWorker() {
       ready = false;
-      worker = new Worker('./runner_worker.js');
-      worker.onmessage = (event) => {
-        const result = event.data;
-        if (result.type === 'ready') {
-          ready = true;
-          sendToFlutter({type: 'ready'});
-          return;
-        }
-        if (result.type === 'result' && pending && result.id === pending.id) {
-          clearTimeout(pending.timer);
-          pending.resolve(result);
-          pending = null;
-          return;
-        }
-        sendToFlutter(result);
-      };
-      worker.onerror = (error) => sendToFlutter({type: 'workerError', error: error.message});
+      try {
+        worker = new Worker('./runner_worker.js');
+        worker.onmessage = (event) => {
+          const result = event.data;
+          if (result.type === 'ready') {
+            ready = true;
+            sendToFlutter({type: 'ready'});
+            return;
+          }
+          if (result.type === 'result' && pending && result.id === pending.id) {
+            clearTimeout(pending.timer);
+            pending.resolve(result);
+            pending = null;
+            return;
+          }
+          sendToFlutter(result);
+        };
+        worker.onerror = (error) => {
+          worker = null;
+          initializeDirect();
+        };
+      } catch (e) {
+        // Fallback for Android WebView where Worker on file:// is blocked
+        worker = null;
+        initializeDirect();
+      }
     }
 
     window.runPython = (id, source, inputs) => new Promise((resolve) => {
       if (!ready || pending) {
         resolve({id, type: 'result', stderr: '', error: 'Python runtime is still preparing.'});
+        return;
+      }
+      if (!worker) {
+        runDirect(id, source, inputs).then(resolve);
         return;
       }
       const timer = setTimeout(() => {

@@ -93,6 +93,26 @@ class PersonalizationEngine {
     _ => 0,
   };
 
+  static int roadmapStartIndexForLevel(String level) => switch (level) {
+    'Intermediate' => 7, // Stage 2 Topic 8 (0-indexed: 7)
+    'Advanced' => 12,    // Stage 3 Topic 13 (0-indexed: 12)
+    _ => 0,              // Stage 1 Topic 1 (0-indexed: 0)
+  };
+
+  static int startStageForLevel(String level) => switch (level) {
+    'Intermediate' => 2,
+    'Advanced' => 3,
+    _ => 1,
+  };
+
+  static String defaultStage4TrackForGoal(String goal) => switch (goal) {
+    'Data / AI' => 'ai_ml',
+    'Automation' => 'automation',
+    'Career' => 'web',
+    'Just curious' => 'data',
+    _ => 'web',
+  };
+
   static int startingDifficulty(String level) => switch (level) {
     'Intermediate' => 3,
     'Advanced' => 4,

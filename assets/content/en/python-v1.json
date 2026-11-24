@@ -1,94 +1,1744 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "python-core-en",
   "version": 1,
   "language": "en",
-  "course": "Python",
-  "tasks": [
+  "course": "Python Mastery Roadmap",
+  "stages": [
     {
-      "id": "L1-01",
-      "title": "Introduction",
-      "order": 1,
-      "minutes": 8,
-      "overview": "Python is a language for giving clear instructions to a computer. In this first task, you will see what Python is, where it is used, and what a tiny program looks like.",
-      "lesson": [
-        {"heading": "What is Python?", "body": "Python is a programming language. You write instructions in Python, and the computer follows them in order."},
-        {"heading": "Where is it used?", "body": "People use Python to automate repetitive work, build websites, explore data, create tools, and control devices."},
-        {"heading": "Your first instruction", "body": "print(...) asks Python to display a value. Text needs matching quotation marks inside the parentheses."},
-        {"heading": "Remember", "body": "A program is a set of instructions. Python runs them in order, and print(...) displays a message."}
+      "id": "stage-1",
+      "stageNumber": 1,
+      "title": "Stage 1: Foundations",
+      "subtitle": "Setup, syntax, data types, logic, loops & functions",
+      "estimatedHours": 8,
+      "badge": "rocket",
+      "projects": [
+        {
+          "id": "P1-01",
+          "title": "Number-Guessing Game",
+          "description": "Build an interactive CLI game where the computer picks a random secret number and guides the player with 'Too high' or 'Too low' hints until they win.",
+          "deliverable": "A complete script using while loops, random module, and conditionals."
+        },
+        {
+          "id": "P1-02",
+          "title": "Simple Calculator",
+          "description": "Create a modular calculator that takes user inputs, supports addition, subtraction, multiplication, and division, and handles invalid numbers gracefully.",
+          "deliverable": "A clean CLI application organized into reusable mathematical functions."
+        }
       ],
-      "examples": [
-        {"title": "Display a welcome", "code": "print(\"Hello, Python!\")", "output": "Hello, Python!", "explanation": "The text is inside quotes, and print displays it."}
-      ],
-      "practicals": [
-        {"id": "L1-01-q1", "type": "multipleChoice", "prompt": "Which instruction displays a message?", "options": ["print(\"Hi\")", "show(\"Hi\")", "message = \"Hi\""], "answer": "print(\"Hi\")"},
-        {"id": "L1-01-q2", "type": "yesNo", "prompt": "Does Python follow program instructions in order?", "answer": "yes"},
-        {"id": "L1-01-q3", "type": "code", "prompt": "Write one line that displays the text Ready to learn!", "tests": [{"stdout": "Ready to learn!\n"}]}
-      ],
-      "project": {
-        "title": "A tiny welcome sign",
-        "scenario": "A friend is setting up a welcome screen for a small study group. They need Python to show a friendly title and a second line that says the group is ready.",
-        "friendPrompt": "Hey {name}, I’m putting together a welcome screen for our study group. How can I make Python show a friendly title and then a second line saying we’re ready?",
-        "steps": ["Display a short welcome title.", "Add another print instruction underneath it.", "Run the program and check both lines appear."],
-        "tests": [{"stdoutLines": ["Welcome to the study group!", "We are ready to learn."]}]
-      }
+      "tasks": [
+        {
+          "id": "L1-01",
+          "title": "Introduction",
+          "subtitle": "History, setup, who created Python & first program",
+          "stageId": "stage-1",
+          "order": 1,
+          "minutes": 8,
+          "overview": "Python is a modern, high-level programming language designed for readability and clarity. Discover who created Python, how it executes your instructions, and write your first functioning program.",
+          "lesson": [
+            {
+              "heading": "Who Created Python?",
+              "body": "Python was created by Dutch programmer Guido van Rossum in the late 1980s at Centrum Wiskunde & Informatica (CWI) in the Netherlands. Its initial release arrived in 1991. Van Rossum named the language after the British comedy troupe Monty Python's Flying Circus because he wanted programming to be engaging and enjoyable."
+            },
+            {
+              "heading": "The Core Philosophy & The Zen of Python",
+              "body": "Unlike older languages that required complex boilerplate, Python follows the principle that 'Readability counts' and 'Simple is better than complex'. Python uses clean indentation rather than brackets to structure code, making it read almost like plain English."
+            },
+            {
+              "heading": "How Python Runs Your Code",
+              "body": "Python is an interpreted language. When you run a script, the Python virtual machine compiles your plain text instructions into internal bytecode (.pyc) and executes it line by line from top to bottom."
+            },
+            {
+              "heading": "Your First Program",
+              "body": "The built-in print() function tells Python to output text to standard output. String literals are enclosed in matching double or single quotation marks inside the parentheses."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Your first print instruction",
+              "code": "print(\"Hello, Python!\")",
+              "output": "Hello, Python!",
+              "explanation": "print displays whatever expression is passed inside its parentheses. The quotes tell Python this is a string literal."
+            },
+            {
+              "title": "Multiple output lines",
+              "code": "print(\"Welcome to Easy Python!\")\nprint(\"Built for developers.\")",
+              "output": "Welcome to Easy Python!\nBuilt for developers.",
+              "explanation": "Python executes instructions in sequence from top to bottom. Each print call produces a new line by default."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L1-01-q1",
+              "type": "multipleChoice",
+              "prompt": "Which instruction displays a message in Python?",
+              "options": [
+                "print(\"Hi\")",
+                "show(\"Hi\")",
+                "message = \"Hi\""
+              ],
+              "answer": "print(\"Hi\")",
+              "aiExplanation": "Correct! print() is Python's built-in function to display text or values to the terminal."
+            },
+            {
+              "id": "L1-01-q2",
+              "type": "yesNo",
+              "prompt": "Was Python created by Guido van Rossum in the late 1980s?",
+              "answer": "yes",
+              "aiExplanation": "Spot on! Guido van Rossum conceived Python in December 1989 and published version 0.9.0 in 1991."
+            },
+            {
+              "id": "L1-01-q3",
+              "type": "code",
+              "prompt": "Write one line that displays the text Ready to learn!",
+              "tests": [
+                {
+                  "stdout": "Ready to learn!\n"
+                }
+              ],
+              "aiExplanation": "Nice work! You used print(\"Ready to learn!\") with proper parentheses and quotes."
+            }
+          ],
+          "project": {
+            "title": "Personal Terminal Greeter",
+            "scenario": "A study group needs a terminal greeting script that welcomes new learners and announces that Python is active.",
+            "friendPrompt": "Hey {name}, I'm setting up our study group's first script. How do I print a warm welcome message and confirm our environment is ready?",
+            "steps": [
+              "Call print() to display 'Welcome to the study group!'",
+              "Call print() on the next line to display 'We are ready to learn.'",
+              "Run the script to check both output lines."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Welcome to the study group!",
+                  "We are ready to learn."
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L1-02",
+          "title": "Variables, Data Types, Input/Output",
+          "subtitle": "Storing values, types (int, float, str, bool), input() & f-strings",
+          "stageId": "stage-1",
+          "order": 2,
+          "minutes": 10,
+          "overview": "Programs store and manipulate data. Learn how Python variables name values in memory, explore fundamental data types, receive user input from the keyboard, and format text output.",
+          "lesson": [
+            {
+              "heading": "Variables as Named Labels",
+              "body": "In Python, a variable is not an empty box; it is a label bound to an object in memory (Hunt's object model). Writing score = 10 creates the integer 10 in memory and points the name 'score' to it. Variable names must start with a letter or underscore and are case-sensitive."
+            },
+            {
+              "heading": "Core Built-In Types",
+              "body": "Python has four foundational scalar data types:\n- int: Whole numbers (e.g. 42, -5)\n- float: Decimal numbers (e.g. 3.1415, 0.5)\n- str: Text characters inside quotes (e.g. 'hello', \"Python\")\n- bool: Logical truth values (True or False)"
+            },
+            {
+              "heading": "Dynamic Typing & type()",
+              "body": "Python is dynamically typed. You do not declare variable types explicitly; Python determines the type automatically at runtime based on the value assigned. Use type(x) to inspect any object's type."
+            },
+            {
+              "heading": "Reading User Input",
+              "body": "The input(prompt) function pauses program execution, waits for the user to type in the terminal, and always returns the input as a string (str). When you need numbers for math, convert them using int() or float()."
+            },
+            {
+              "heading": "Modern Output with f-strings",
+              "body": "Formatted string literals (f-strings) let you embed expressions directly inside text by prefixing the string with 'f' and enclosing variable names in curly braces {}. For example: f\"Hello, {user_name}!\"."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Assigning variables and using f-strings",
+              "code": "user = \"Maya\"\nage = 22\nprint(f\"{user} is {age} years old.\")",
+              "output": "Maya is 22 years old.",
+              "explanation": "The f prefix evaluates the expressions inside {user} and {age} and interpolates them cleanly."
+            },
+            {
+              "title": "Converting string input to integer",
+              "code": "entry = \"15\"\ncount = int(entry)\nprint(count + 5)",
+              "output": "20",
+              "explanation": "int(\"15\") transforms the text '15' into the numeric integer 15 so mathematical addition can occur."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L1-02-q1",
+              "type": "multipleChoice",
+              "prompt": "What does a .py file usually contain?",
+              "options": [
+                "Python instructions",
+                "A picture",
+                "A spreadsheet"
+              ],
+              "answer": "Python instructions",
+              "aiExplanation": "Correct! Files ending in .py are Python source files containing plain text code."
+            },
+            {
+              "id": "L1-02-q2",
+              "type": "shortAnswer",
+              "prompt": "In a few words, what should you check after running a program?",
+              "answer": "the output",
+              "requiredKeywords": [
+                "output"
+              ],
+              "aiExplanation": "Exactly! Checking program output lets you verify that your code behaved as intended."
+            },
+            {
+              "id": "L1-02-q3",
+              "type": "code",
+              "prompt": "Display Start on one line and Finished on the next.",
+              "tests": [
+                {
+                  "stdout": "Start\nFinished\n"
+                }
+              ],
+              "aiExplanation": "Well done! You output two sequential lines using print('Start') and print('Finished')."
+            }
+          ],
+          "project": {
+            "title": "Interactive Profile Card Generator",
+            "scenario": "A registration desk needs a script that stores an attendee's name and ticket count, then displays a formatted summary.",
+            "friendPrompt": "Hey {name}, I want to format a neat registration card showing an attendee's name and status. How do I print the details cleanly?",
+            "steps": [
+              "Store attendee name in a variable.",
+              "Store their registration status as a boolean.",
+              "Print the confirmation details using an f-string."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Attendee: Jordan",
+                  "Registered: True"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L1-03",
+          "title": "Operators and Conditions (if/elif/else)",
+          "subtitle": "Arithmetic, comparisons, boolean logic & branching decisions",
+          "stageId": "stage-1",
+          "order": 3,
+          "minutes": 10,
+          "overview": "Computers make decisions based on logical conditions. Master Python's arithmetic operators, comparison checks (==, !=, <, >), logical chaining (and, or, not), and if/elif/else branching.",
+          "lesson": [
+            {
+              "heading": "Arithmetic Operators",
+              "body": "Python provides full mathematical calculation capability:\n+ (addition), - (subtraction), * (multiplication), / (true division yielding float), // (floor division yielding integer), % (modulus/remainder), and ** (exponentiation)."
+            },
+            {
+              "heading": "Comparison Operators",
+              "body": "Comparisons evaluate expressions and produce a bool (True or False):\n- ==: equal to\n- !=: not equal to\n- <: less than, >: greater than\n- <=: less than or equal, >=: greater than or equal\nCaution: Do not confuse assignment (=) with equality comparison (==)."
+            },
+            {
+              "heading": "Combining Decisions with and, or, not",
+              "body": "Chain logic with keywords: 'and' requires both conditions to be True; 'or' requires at least one condition to be True; 'not' inverts the truth value."
+            },
+            {
+              "heading": "Branching with if, elif, and else",
+              "body": "Python uses indentation (typically 4 spaces) to define blocks of code under an if statement. Python tests the if condition; if False, it checks successive elif clauses in order, and falls back to else if none matched."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Branching based on temperature",
+              "code": "temperature = 28\nif temperature > 30:\n    print(\"Hot day\")\nelif temperature >= 20:\n    print(\"Pleasant day\")\nelse:\n    print(\"Cool day\")",
+              "output": "Pleasant day",
+              "explanation": "28 is not > 30, but it is >= 20, so the elif branch runs and execution skips the else."
+            },
+            {
+              "title": "Combining conditions with and",
+              "code": "has_id = True\nage = 19\nif age >= 18 and has_id:\n    print(\"Entry permitted\")",
+              "output": "Entry permitted",
+              "explanation": "Both conditions evaluate to True, satisfying the and operator."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L1-03-q1",
+              "type": "yesNo",
+              "prompt": "Does Python use curly braces {} instead of indentation to mark an if code block?",
+              "answer": "no",
+              "aiExplanation": "Correct! Unlike C or Java, Python uses whitespace indentation to define code blocks."
+            },
+            {
+              "id": "L1-03-q2",
+              "type": "multipleChoice",
+              "prompt": "You need to check if a student score is between 80 and 100 inclusive. Which expression is correct?",
+              "options": [
+                "score >= 80 and score <= 100",
+                "score >= 80 or score <= 100",
+                "score == 80 & 100"
+              ],
+              "answer": "score >= 80 and score <= 100",
+              "aiExplanation": "Spot on! The 'and' keyword ensures both boundary checks must evaluate to True."
+            },
+            {
+              "id": "L1-03-q3",
+              "type": "code",
+              "prompt": "Write code that checks if x = 12 is greater than 10. If so, print \"Greater\".",
+              "tests": [
+                {
+                  "stdout": "Greater\n"
+                }
+              ],
+              "aiExplanation": "Great job! if x > 10: with an indented print(\"Greater\") is the canonical syntax."
+            }
+          ],
+          "project": {
+            "title": "Admission Ticket Validator",
+            "scenario": "A museum kiosk classifies tickets based on age: age < 12 is Child, age >= 65 is Senior, otherwise Adult.",
+            "friendPrompt": "Hey {name}, I'm coding the museum ticket kiosk logic. How do I branch the ticket category based on someone's age?",
+            "steps": [
+              "Define age = 70.",
+              "Use if/elif/else to test if child, senior, or adult.",
+              "Print the ticket category label."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Senior Ticket"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L1-04",
+          "title": "Loops (for, while)",
+          "subtitle": "Iteration, sequences, range(), break & continue",
+          "stageId": "stage-1",
+          "order": 4,
+          "minutes": 10,
+          "overview": "Repetition is the backbone of computing. Learn how for loops iterate over ranges and sequences, how while loops repeat until a condition changes, and how break and continue control loop flow.",
+          "lesson": [
+            {
+              "heading": "The for Loop and Iteration",
+              "body": "A for loop in Python iterates directly over items in any sequence (list, string, range). Instead of tracking index counters manually, Python extracts each item into your loop variable: for item in collection:."
+            },
+            {
+              "heading": "Generating Numbers with range()",
+              "body": "range(start, stop, step) generates an arithmetic progression of integers. The stop value is exclusive: range(1, 5) produces 1, 2, 3, 4. If start is omitted, it defaults to 0."
+            },
+            {
+              "heading": "The while Loop",
+              "body": "A while loop repeats its indented block as long as its condition remains True. You must ensure the loop state updates toward false inside the body, otherwise you create an infinite loop."
+            },
+            {
+              "heading": "Loop Control: break and continue",
+              "body": "- break: Immediately terminates the loop and moves to the statement following it.\n- continue: Skips the remainder of the current iteration and jumps to the next turn."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Counting with range in a for loop",
+              "code": "for n in range(1, 4):\n    print(f\"Step {n}\")",
+              "output": "Step 1\nStep 2\nStep 3",
+              "explanation": "range(1, 4) produces values 1, 2, and 3. The loop runs 3 times."
+            },
+            {
+              "title": "Countdown with a while loop",
+              "code": "count = 3\nwhile count > 0:\n    print(count)\n    count -= 1\nprint(\"Lift off!\")",
+              "output": "3\n2\n1\nLift off!",
+              "explanation": "Each iteration decrements count by 1 until count reaches 0, ending the loop."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L1-04-q1",
+              "type": "yesNo",
+              "prompt": "Does range(1, 5) include the number 5 in its output?",
+              "answer": "no",
+              "aiExplanation": "Correct! The stop parameter in range() is always exclusive, so it stops at 4."
+            },
+            {
+              "id": "L1-04-q2",
+              "type": "multipleChoice",
+              "prompt": "Which statement immediately halts and exits the enclosing loop?",
+              "options": [
+                "break",
+                "continue",
+                "pass"
+              ],
+              "answer": "break",
+              "aiExplanation": "Spot on! 'break' jumps completely out of the nearest enclosing loop."
+            },
+            {
+              "id": "L1-04-q3",
+              "type": "code",
+              "prompt": "Use a for loop and range(1, 4) to print each number on its own line.",
+              "tests": [
+                {
+                  "stdout": "1\n2\n3\n"
+                }
+              ],
+              "aiExplanation": "Excellent! for i in range(1, 4): print(i) outputs 1, 2, and 3."
+            }
+          ],
+          "project": {
+            "title": "Retry Mechanism Simulator",
+            "scenario": "A network client needs to retry an operation up to 3 times before declaring an error.",
+            "friendPrompt": "Hey {name}, how do I write a loop that attempts a connection 3 times and counts each attempt?",
+            "steps": [
+              "Initialize attempts = 1.",
+              "While attempts <= 3, print the attempt number and increment.",
+              "Print 'All attempts finished' once done."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Attempt 1",
+                  "Attempt 2",
+                  "Attempt 3",
+                  "All attempts finished"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L1-05",
+          "title": "Strings",
+          "subtitle": "Indexing, slicing, immutability, formatting & string methods",
+          "stageId": "stage-1",
+          "order": 5,
+          "minutes": 9,
+          "overview": "Strings are sequences of text characters. Understand zero-based indexing, slicing substrings with stride, string immutability, and essential built-in transformation methods like strip(), split(), and replace().",
+          "lesson": [
+            {
+              "heading": "Indexing and Slicing",
+              "body": "Strings are zero-indexed: text[0] accesses the first character. Negative indices count backward from the end: text[-1] is the last character. Use slicing text[start:stop:step] to extract substrings. Reversing a string is cleanly expressed as text[::-1]."
+            },
+            {
+              "heading": "Strings are Immutable",
+              "body": "In Python, strings cannot be altered in place. Attempting text[0] = 'H' raises a TypeError. Every string transformation method produces and returns a brand-new string object."
+            },
+            {
+              "heading": "Essential String Methods",
+              "body": "- .upper() and .lower(): convert case\n- .strip(): remove leading and trailing whitespace\n- .replace(old, new): replace occurrences\n- .split(delimiter): break text into a list of words\n- delimiter.join(list): join items back into a single string"
+            }
+          ],
+          "examples": [
+            {
+              "title": "Slicing and case transformation",
+              "code": "banner = \"python programming\"\nprint(banner[:6].upper())",
+              "output": "PYTHON",
+              "explanation": "banner[:6] slices the first 6 characters ('python'), and .upper() transforms it to uppercase."
+            },
+            {
+              "title": "Splitting and joining",
+              "code": "words = [\"learn\", \"python\", \"now\"]\nprint(\"-\".join(words))",
+              "output": "learn-python-now",
+              "explanation": "join stitches list items together with the '-' hyphen separator."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L1-05-q1",
+              "type": "yesNo",
+              "prompt": "Can you change an individual character in a Python string directly using s[0] = 'X'?",
+              "answer": "no",
+              "aiExplanation": "Correct! Strings in Python are immutable; you must construct a new string."
+            },
+            {
+              "id": "L1-05-q2",
+              "type": "multipleChoice",
+              "prompt": "What method removes surrounding spaces from '  clean code  '?",
+              "options": [
+                ".strip()",
+                ".clean()",
+                ".trim()"
+              ],
+              "answer": ".strip()",
+              "aiExplanation": "That's it! In Python, .strip() strips leading and trailing whitespace."
+            },
+            {
+              "id": "L1-05-q3",
+              "type": "code",
+              "prompt": "Extract and print the first 4 characters of word = \"Developer\".",
+              "tests": [
+                {
+                  "stdout": "Deve\n"
+                }
+              ],
+              "aiExplanation": "Awesome! word[:4] extracts the substring from index 0 up to 4."
+            }
+          ],
+          "project": {
+            "title": "Receipt Item Formatter",
+            "scenario": "A retail terminal takes raw item entries and formats them in clean capitalized title format with standard spacing.",
+            "friendPrompt": "Hey {name}, how do I take a messy product string like '  fresh organic coffee  ' and format it neatly for our receipts?",
+            "steps": [
+              "Define item = '  fresh organic coffee  '.",
+              "Strip the whitespace and apply title-case.",
+              "Print the cleaned item name."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Fresh Organic Coffee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L1-06",
+          "title": "Lists, Tuples, Sets, Dictionaries",
+          "subtitle": "Data collections: mutable lists, immutable tuples, unique sets & key-value dicts",
+          "stageId": "stage-1",
+          "order": 6,
+          "minutes": 11,
+          "overview": "Organize data using Python's four major built-in collections. Discover when to use mutable lists, fixed tuples, deduplicated sets, and high-performance key-value dictionaries.",
+          "lesson": [
+            {
+              "heading": "Lists: Ordered and Mutable",
+              "body": "Lists are enclosed in square brackets: [1, 2, 3]. They are ordered, allow duplicates, and are mutable. You can add elements with .append(), remove elements with .pop() or .remove(), and modify elements in place: fruits[0] = 'mango'."
+            },
+            {
+              "heading": "Tuples: Ordered and Immutable",
+              "body": "Tuples use parentheses: (10, 20). Like lists, they preserve order and allow duplicates, but once created, their elements cannot be changed or reassigned. Use tuples for fixed data records."
+            },
+            {
+              "heading": "Sets: Unordered and Unique",
+              "body": "Sets are created with curly braces: {'apple', 'banana'}. Sets automatically eliminate duplicate entries and provide fast membership testing (item in my_set) and set math (union, intersection)."
+            },
+            {
+              "heading": "Dictionaries: Key-Value Pairs",
+              "body": "Dictionaries associate unique keys with values: student = {'name': 'Asha', 'grade': 'A'}. You look up values by key: student['name'] or safely with student.get('name'). Dictionaries are optimized for instant lookups."
+            }
+          ],
+          "examples": [
+            {
+              "title": "List manipulation",
+              "code": "fruits = [\"apple\", \"banana\"]\nfruits.append(\"cherry\")\nprint(len(fruits))\nprint(fruits[1])",
+              "output": "3\nbanana",
+              "explanation": "append adds cherry to the end, making length 3. Index 1 accesses the second item, banana."
+            },
+            {
+              "title": "Dictionary key-value access",
+              "code": "book = {\"title\": \"Python Guide\", \"pages\": 280}\nprint(book[\"title\"])",
+              "output": "Python Guide",
+              "explanation": "Accessing the key 'title' returns its paired value 'Python Guide'."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L1-06-q1",
+              "type": "multipleChoice",
+              "prompt": "Scenario: Turn these three fruits: apple, banana, cherry into a Python list.",
+              "options": [
+                "fruits = [\"apple\", \"banana\", \"cherry\"]",
+                "fruits = (\"apple\", \"banana\", \"cherry\")",
+                "fruits = {\"apple\": 1, \"banana\": 2}"
+              ],
+              "answer": "fruits = [\"apple\", \"banana\", \"cherry\"]",
+              "aiExplanation": "Correct! Square brackets [] define a mutable list in Python."
+            },
+            {
+              "id": "L1-06-q2",
+              "type": "yesNo",
+              "prompt": "Can a Python set contain duplicate values?",
+              "answer": "no",
+              "aiExplanation": "Spot on! Sets automatically enforce uniqueness and discard duplicates."
+            },
+            {
+              "id": "L1-06-q3",
+              "type": "code",
+              "prompt": "Create a dictionary person with key \"role\" set to \"Developer\", then print person[\"role\"].",
+              "tests": [
+                {
+                  "stdout": "Developer\n"
+                }
+              ],
+              "aiExplanation": "Great job! person = {\"role\": \"Developer\"} followed by print(person[\"role\"]) retrieves the value."
+            }
+          ],
+          "project": {
+            "title": "Inventory Price Checker",
+            "scenario": "A store manager needs a dictionary of catalog prices to quickly look up and display an item's price tag.",
+            "friendPrompt": "Hey {name}, how do I store product prices in a dictionary and look up the price of 'notebook'?",
+            "steps": [
+              "Create a dictionary with items and prices.",
+              "Access the 'notebook' key.",
+              "Print the item and its price using an f-string."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "notebook: $5"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L1-07",
+          "title": "Functions",
+          "subtitle": "Modular code, def, parameters, return values & scope",
+          "stageId": "stage-1",
+          "order": 7,
+          "minutes": 10,
+          "overview": "Functions allow you to package logic into reusable, modular blocks. Learn how to define functions with def, pass positional and keyword arguments, return calculation results, and understand variable scope.",
+          "lesson": [
+            {
+              "heading": "Why Functions Matter",
+              "body": "Instead of duplicating code, functions encapsulate a task under a descriptive name. Functions make programs maintainable, testable, and easier to understand."
+            },
+            {
+              "heading": "Defining Functions with def",
+              "body": "Define a function using the 'def' keyword followed by the function name, parentheses for parameters, and a colon: def compute_total(price, tax):. The indented block contains the function body."
+            },
+            {
+              "heading": "Parameters, Arguments & Default Values",
+              "body": "Parameters are variable names in the function definition; arguments are the actual values supplied when calling it. You can supply default parameter values: def greet(name, greeting='Hello'):."
+            },
+            {
+              "heading": "Returning Values vs Printing",
+              "body": "The return keyword passes a result back to the caller so it can be stored in a variable or used in further calculations. If a function reaches the end without a return statement, it implicitly returns None."
+            },
+            {
+              "heading": "Variable Scope (Local vs Global)",
+              "body": "Variables created inside a function are local to that function and cease to exist once the function finishes executing. Global variables defined outside can be read from inside functions."
+            }
+          ],
+          "examples": [
+            {
+              "title": "A function that calculates and returns an amount",
+              "code": "def add_tax(subtotal, rate=0.10):\n    return subtotal + (subtotal * rate)\n\ntotal = add_tax(50)\nprint(f\"Total: {total:.1f}\")",
+              "output": "Total: 55.0",
+              "explanation": "add_tax computes the tax and returns 55.0 to the caller, which is formatted and displayed."
+            },
+            {
+              "title": "Greeting function with default parameter",
+              "code": "def greet(name, title=\"Engineer\"):\n    return f\"Welcome, {title} {name}!\"\n\nprint(greet(\"Asha\"))",
+              "output": "Welcome, Engineer Asha!",
+              "explanation": "The default value 'Engineer' is used because no second argument was provided."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L1-07-q1",
+              "type": "yesNo",
+              "prompt": "Does a Python function without an explicit return statement return None?",
+              "answer": "yes",
+              "aiExplanation": "Correct! If no return statement is executed, Python functions implicitly return None."
+            },
+            {
+              "id": "L1-07-q2",
+              "type": "multipleChoice",
+              "prompt": "Which keyword is used to declare a function in Python?",
+              "options": [
+                "def",
+                "function",
+                "fn"
+              ],
+              "answer": "def",
+              "aiExplanation": "Spot on! 'def' stands for define and introduces a function in Python."
+            },
+            {
+              "id": "L1-07-q3",
+              "type": "code",
+              "prompt": "Define a function square(n) that returns n * n. Call square(4) and print the result.",
+              "tests": [
+                {
+                  "stdout": "16\n"
+                }
+              ],
+              "aiExplanation": "Great job! def square(n): return n * n correctly computes and returns 16."
+            }
+          ],
+          "project": {
+            "title": "Metric Converter Function",
+            "scenario": "A travel app needs a dedicated helper function that converts kilometers into miles (miles = km * 0.621371).",
+            "friendPrompt": "Hey {name}, how do I write a clean reusable function to convert 10 km to miles and print the rounded result?",
+            "steps": [
+              "Define a function km_to_miles(km).",
+              "Return km * 0.621371.",
+              "Call it with 10 and print the rounded result."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "6.21 miles"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     },
     {
-      "id": "L1-02",
-      "title": "Get Started",
-      "order": 2,
-      "minutes": 9,
-      "overview": "A Python program is a set of instructions saved in a file and run by Python. You will learn the basic run cycle and see why output is useful while building a program.",
-      "lesson": [
-        {"heading": "Write and run", "body": "You can write Python in an editor, save the file with a .py ending, and ask Python to run it."},
-        {"heading": "Read the output", "body": "Output is what the program displays. Compare it with what you expected to spot mistakes early."},
-        {"heading": "Follow the order", "body": "Python begins at the first instruction and continues downward. Each print instruction displays its own line."},
-        {"heading": "Remember", "body": "Save your instructions, run the program, and read the output to check what happened."}
+      "id": "stage-2",
+      "stageNumber": 2,
+      "title": "Stage 2: Intermediate",
+      "subtitle": "Files, exceptions, OOP, comprehensions & standard libraries",
+      "estimatedHours": 12,
+      "badge": "layers",
+      "projects": [
+        {
+          "id": "P2-01",
+          "title": "CLI Expense Tracker",
+          "description": "Build an expense recording application that logs expenses to a local CSV file, calculates category breakdowns, and uses exception handling.",
+          "deliverable": "A complete file-persisted budgeting tool with structured classes."
+        },
+        {
+          "id": "P2-02",
+          "title": "To-Do List App",
+          "description": "Develop a persistent task manager that loads and saves tasks in JSON, supports priorities, completion toggles, and formatted date deadlines.",
+          "deliverable": "An interactive terminal task planner with robust error checking."
+        }
       ],
-      "examples": [
-        {"title": "Two lines of output", "code": "print(\"Good morning!\")\nprint(\"Let’s begin.\")", "output": "Good morning!\nLet’s begin.", "explanation": "Python runs the first print before the second one."}
-      ],
-      "practicals": [
-        {"id": "L1-02-q1", "type": "multipleChoice", "prompt": "What does a .py file usually contain?", "options": ["Python instructions", "A picture", "A spreadsheet"], "answer": "Python instructions"},
-        {"id": "L1-02-q2", "type": "shortAnswer", "prompt": "In a few words, what should you check after running a program?", "answer": "the output", "requiredKeywords": ["output"]},
-        {"id": "L1-02-q3", "type": "code", "prompt": "Display Start on one line and Finished on the next.", "tests": [{"stdout": "Start\nFinished\n"}]}
-      ],
-      "project": {
-        "title": "A two-line event reminder",
-        "scenario": "A club organizer wants a small terminal reminder that shows the event name and then the meeting time on the next line.",
-        "friendPrompt": "Hey {name}, I’m making a quick reminder for our club meetup. How do I show the event name first and the time underneath it?",
-        "steps": ["Choose a short event title.", "Display the meeting time on a separate line.", "Run it and check the order."],
-        "tests": [{"stdoutLines": ["Python Club Meetup", "Today at 4 PM"]}]
-      }
+      "tasks": [
+        {
+          "id": "L2-01",
+          "title": "File Handling and Exceptions",
+          "subtitle": "open(), with context manager, try/except/finally & custom errors",
+          "stageId": "stage-2",
+          "order": 8,
+          "minutes": 11,
+          "overview": "Interact with the file system safely. Learn how to open, read, write, and append files using the with context manager, and handle runtime errors gracefully with try/except blocks.",
+          "lesson": [
+            {
+              "heading": "The with Statement & Safe File Access",
+              "body": "Always use the with context manager when opening files: with open('data.txt', 'r') as file:. Python guarantees the file descriptor is closed automatically, even if an exception occurs."
+            },
+            {
+              "heading": "Reading and Writing Modes",
+              "body": "- 'r': read mode (default; raises FileNotFoundError if missing)\n- 'w': write mode (truncates existing file or creates new)\n- 'a': append mode (appends to end of file)\n- 'r+': read and write"
+            },
+            {
+              "heading": "Handling Errors with try/except/finally",
+              "body": "Wrap risky operations in a try block. Catch specific exceptions: except FileNotFoundError: or except ValueError: rather than catching bare Exception. The optional finally block always runs."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Safely catching file missing errors",
+              "code": "try:\n    with open(\"missing.txt\", \"r\") as f:\n        content = f.read()\nexcept FileNotFoundError:\n    print(\"File not found. Using defaults.\")",
+              "output": "File not found. Using defaults.",
+              "explanation": "The try/except structure catches the missing file error without crashing the application."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L2-01-q1",
+              "type": "multipleChoice",
+              "prompt": "Which file open mode overwrites an existing file from the beginning?",
+              "options": [
+                "\"w\"",
+                "\"r\"",
+                "\"a\""
+              ],
+              "answer": "\"w\"",
+              "aiExplanation": "Correct! Mode 'w' truncates the file if it exists or creates a new one."
+            },
+            {
+              "id": "L2-01-q2",
+              "type": "yesNo",
+              "prompt": "Does the 'finally' block in a try/except structure run even if an exception occurred?",
+              "answer": "yes",
+              "aiExplanation": "Correct! The 'finally' block is guaranteed to execute regardless of whether an exception occurred."
+            },
+            {
+              "id": "L2-01-q3",
+              "type": "code",
+              "prompt": "Write a try/except block that catches ZeroDivisionError when dividing 10 by 0, and prints \"Cannot divide by zero\".",
+              "tests": [
+                {
+                  "stdout": "Cannot divide by zero\n"
+                }
+              ],
+              "aiExplanation": "Nice work! Handling ZeroDivisionError prevents abrupt termination."
+            }
+          ],
+          "project": {
+            "title": "Log File Reader & Error Handler",
+            "scenario": "A system daemon reads a configuration file and prints a fallback notice if the file is absent.",
+            "friendPrompt": "Hey {name}, how do I handle reading a missing config file gracefully without the script crashing?",
+            "steps": [
+              "Attempt to open 'config.json'.",
+              "Catch FileNotFoundError.",
+              "Print 'Default config loaded'."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Default config loaded"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L2-02",
+          "title": "Modules, Packages, Pip, Virtual Environments",
+          "subtitle": "import, __name__, standard library, pip & venv isolation",
+          "stageId": "stage-2",
+          "order": 9,
+          "minutes": 10,
+          "overview": "Structure larger Python projects. Master import statements, explore Python's rich standard library, inspect __name__ == '__main__', and isolate third-party packages with venv and pip.",
+          "lesson": [
+            {
+              "heading": "Modules and the import Statement",
+              "body": "Every Python source file is a module. Use import math or from datetime import datetime to incorporate existing code. Python avoids re-importing already loaded modules."
+            },
+            {
+              "heading": "The __name__ == '__main__' Pattern",
+              "body": "When a Python file is run directly, its special __name__ variable is set to '__main__'. When imported by another file, __name__ matches the module name. This lets you write code that only executes when run as a standalone script."
+            },
+            {
+              "heading": "Pip and Virtual Environments (venv)",
+              "body": "Pip is Python's official package manager. Virtual environments (python -m venv .venv) isolate project dependencies so different apps on the same machine never conflict."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Importing math and using functions",
+              "code": "import math\nprint(math.isqrt(49))",
+              "output": "7",
+              "explanation": "math.isqrt calculates the integer square root cleanly."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L2-02-q1",
+              "type": "yesNo",
+              "prompt": "Is pip the standard package installer for Python libraries?",
+              "answer": "yes",
+              "aiExplanation": "Correct! pip comes bundled with modern Python installations."
+            },
+            {
+              "id": "L2-02-q2",
+              "type": "multipleChoice",
+              "prompt": "What command creates a local virtual environment named 'env'?",
+              "options": [
+                "python -m venv env",
+                "pip create env",
+                "python init env"
+              ],
+              "answer": "python -m venv env",
+              "aiExplanation": "Spot on! python -m venv <directory> is the built-in command to initialize an isolated environment."
+            },
+            {
+              "id": "L2-02-q3",
+              "type": "code",
+              "prompt": "Import the math module and print math.ceil(4.2).",
+              "tests": [
+                {
+                  "stdout": "5\n"
+                }
+              ],
+              "aiExplanation": "Great! math.ceil rounds a decimal upward to the nearest integer."
+            }
+          ],
+          "project": {
+            "title": "Random Team Assigner Module",
+            "scenario": "A community manager wants a script using the random module to pick a team lead from a participant list.",
+            "friendPrompt": "Hey {name}, how do I use Python's random module to select a lead fairly from our group?",
+            "steps": [
+              "Import random module.",
+              "Seed random with a fixed value for reproducibility.",
+              "Choose and print the lead."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Lead: Maya"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L2-03",
+          "title": "Object-Oriented Programming (Classes, Inheritance)",
+          "subtitle": "Classes, objects, __init__, self, methods & inheritance",
+          "stageId": "stage-2",
+          "order": 10,
+          "minutes": 12,
+          "overview": "Model real-world entities with classes. Master the constructor __init__, understand the explicit self parameter, build instance methods, and create hierarchical class structures using inheritance.",
+          "lesson": [
+            {
+              "heading": "Classes and Objects",
+              "body": "A class is a blueprint for creating objects. An object is an instance of a class that bundles state (attributes) and behavior (methods) together."
+            },
+            {
+              "heading": "The __init__ Constructor and self",
+              "body": "When a new instance is created, Python automatically invokes the __init__ initializer method. The first parameter, self, explicitly refers to the specific instance being created or operated on."
+            },
+            {
+              "heading": "Inheritance and super()",
+              "body": "Inheritance allows a subclass to inherit attributes and methods from a parent class: class Dog(Animal):. Use super().__init__() to call the parent class initializer."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Defining a simple BankAccount class",
+              "code": "class BankAccount:\n    def __init__(self, owner, balance=0):\n        self.owner = owner\n        self.balance = balance\n\n    def deposit(self, amount):\n        self.balance += amount\n        return self.balance\n\nacct = BankAccount(\"Alex\", 100)\nacct.deposit(50)\nprint(acct.owner + \": $\" + str(acct.balance))",
+              "output": "Alex: $150",
+              "explanation": "acct maintains its own balance attribute and modifies it through the deposit method."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L2-03-q1",
+              "type": "multipleChoice",
+              "prompt": "What is the conventional name of the first parameter in an instance method?",
+              "options": [
+                "self",
+                "this",
+                "cls"
+              ],
+              "answer": "self",
+              "aiExplanation": "Correct! Python explicitly passes the instance as the first argument, conventionally named 'self'."
+            },
+            {
+              "id": "L2-03-q2",
+              "type": "yesNo",
+              "prompt": "Can a class inherit from another class in Python?",
+              "answer": "yes",
+              "aiExplanation": "Spot on! Python supports single and multiple inheritance."
+            },
+            {
+              "id": "L2-03-q3",
+              "type": "code",
+              "prompt": "Create a class Car with attribute model set in __init__. Instantiate Car(\"Sedan\") and print its model.",
+              "tests": [
+                {
+                  "stdout": "Sedan\n"
+                }
+              ],
+              "aiExplanation": "Well done! Instance attributes are bound to self inside __init__."
+            }
+          ],
+          "project": {
+            "title": "E-Commerce Cart Model",
+            "scenario": "An online store needs an Item class with name and price attributes and a method to calculate tax.",
+            "friendPrompt": "Hey {name}, how do I build an Item class that computes its total price with tax?",
+            "steps": [
+              "Define Item class with name and price.",
+              "Add total_with_tax(rate) method.",
+              "Instantiate Item('Book', 20) and print total."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Item Book: $22.0"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L2-04",
+          "title": "Comprehensions, Lambda, Iterators, Generators",
+          "subtitle": "List/dict comprehensions, anonymous functions & lazy evaluation with yield",
+          "stageId": "stage-2",
+          "order": 11,
+          "minutes": 11,
+          "overview": "Write elegant, idiomatic Python. Master concise list and dict comprehensions, lightweight lambda expressions, the iterator protocol (iter/next), and memory-efficient generators using yield.",
+          "lesson": [
+            {
+              "heading": "List and Dict Comprehensions",
+              "body": "Comprehensions provide a concise way to create new collections from existing iterables: [x * 2 for x in numbers if x > 0]. They are faster and more readable than manual loops."
+            },
+            {
+              "heading": "Lambda Functions",
+              "body": "A lambda function is an anonymous inline function defined with lambda args: expression. Use them for short callbacks, like sorting: sorted(items, key=lambda x: x['price'])."
+            },
+            {
+              "heading": "Generators and yield",
+              "body": "Generators produce items on demand (lazy evaluation) rather than storing all elements in memory. A function that contains the 'yield' keyword becomes a generator factory."
+            }
+          ],
+          "examples": [
+            {
+              "title": "List comprehension filtering evens",
+              "code": "evens = [x for x in range(1, 7) if x % 2 == 0]\nprint(evens)",
+              "output": "[2, 4, 6]",
+              "explanation": "The comprehension filters elements that satisfy x % 2 == 0."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L2-04-q1",
+              "type": "yesNo",
+              "prompt": "Does a generator using 'yield' compute and store all values in RAM immediately?",
+              "answer": "no",
+              "aiExplanation": "Correct! Generators produce values lazily one at a time on demand."
+            },
+            {
+              "id": "L2-04-q2",
+              "type": "multipleChoice",
+              "prompt": "Which comprehension syntax creates a list of squared numbers from 1 to 3?",
+              "options": [
+                "[x**2 for x in range(1, 4)]",
+                "{x**2: x in range(1, 4)}",
+                "(x**2 for x in range(1, 4))"
+              ],
+              "answer": "[x**2 for x in range(1, 4)]",
+              "aiExplanation": "Correct! Square brackets produce a list comprehension."
+            },
+            {
+              "id": "L2-04-q3",
+              "type": "code",
+              "prompt": "Create a list comprehension that doubles each item in [1, 2, 3] and prints the resulting list.",
+              "tests": [
+                {
+                  "stdout": "[2, 4, 6]\n"
+                }
+              ],
+              "aiExplanation": "Nice work! [x * 2 for x in [1, 2, 3]] transforms the collection cleanly."
+            }
+          ],
+          "project": {
+            "title": "Data Stream Filter",
+            "scenario": "A sensor pipeline needs a generator that yields only readings above a threshold to save memory.",
+            "friendPrompt": "Hey {name}, how do I use a generator function with yield to filter high sensor readings?",
+            "steps": [
+              "Define generator filter_readings(readings).",
+              "Yield items > 50.",
+              "Consume and print filtered values."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Reading: 85",
+                  "Reading: 92"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L2-05",
+          "title": "JSON, CSV, Dates, Regex",
+          "subtitle": "json.loads/dumps, csv.reader/writer, datetime arithmetic & re regex",
+          "stageId": "stage-2",
+          "order": 12,
+          "minutes": 11,
+          "overview": "Process standard data interchange formats. Parse and serialize JSON payloads, read and write tabular CSV files, calculate date differences with datetime, and validate text patterns with regex (re).",
+          "lesson": [
+            {
+              "heading": "Working with JSON",
+              "body": "Python's json module serializes dictionaries to JSON text with json.dumps() and parses JSON text into Python dictionaries with json.loads(). For files, use json.dump() and json.load()."
+            },
+            {
+              "heading": "Tabular CSV Data",
+              "body": "The csv module provides csv.reader and csv.DictReader to process comma-separated values row by row, automatically handling quoted fields."
+            },
+            {
+              "heading": "Datetime & Timestamps",
+              "body": "From the datetime module, datetime.now() gives the current timestamp, and timedelta represents a duration. Formatting is done via .strftime(\"%Y-%m-%d\")."
+            },
+            {
+              "heading": "Pattern Matching with Regex (re)",
+              "body": "The re module enables regular expression searches and validations: re.search(r'\\d+', text) finds numbers, and re.findall() collects all matches."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Parsing JSON text to a Python dictionary",
+              "code": "import json\npayload = '{\"service\": \"api\", \"status\": 200}'\ndata = json.loads(payload)\nprint(data[\"service\"], data[\"status\"])",
+              "output": "api 200",
+              "explanation": "json.loads parses the JSON string into an accessible Python dictionary."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L2-05-q1",
+              "type": "multipleChoice",
+              "prompt": "Which json function parses a JSON string into a Python dictionary?",
+              "options": [
+                "json.loads()",
+                "json.dumps()",
+                "json.parse()"
+              ],
+              "answer": "json.loads()",
+              "aiExplanation": "Correct! json.loads() loads from a string, while json.load() loads from a file object."
+            },
+            {
+              "id": "L2-05-q2",
+              "type": "yesNo",
+              "prompt": "Does the re module come built-in with standard Python installations?",
+              "answer": "yes",
+              "aiExplanation": "Correct! The regular expression module 're' is part of the Python standard library."
+            },
+            {
+              "id": "L2-05-q3",
+              "type": "code",
+              "prompt": "Import json, serialize d = {\"active\": True} using json.dumps(d), and print the JSON string.",
+              "tests": [
+                {
+                  "stdout": "{\"active\": true}\n"
+                }
+              ],
+              "aiExplanation": "Spot on! json.dumps converts Python's True into JSON's lowercase true."
+            }
+          ],
+          "project": {
+            "title": "User Log Entry Formatter",
+            "scenario": "A security logger formats incoming events into standard JSON with a timestamp string.",
+            "friendPrompt": "Hey {name}, how do I build a small log generator that encodes event data as a clean JSON line?",
+            "steps": [
+              "Construct a dictionary with user and action.",
+              "Serialize with json.dumps().",
+              "Print the output JSON."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "{\"action\": \"login\", \"user\": \"alex\"}"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     },
     {
-      "id": "L1-03",
-      "title": "Syntax",
-      "order": 3,
-      "minutes": 10,
-      "overview": "Syntax is the set of rules for writing Python instructions. Matching quotes, parentheses, colons, and indentation help Python understand what you mean.",
-      "lesson": [
-        {"heading": "Small rules matter", "body": "Python expects symbols and words to be in the right order. A missing quote or parenthesis can stop a line from running."},
-        {"heading": "Match pairs", "body": "When you open parentheses or quotes, close them. For example, print(\"Hello\") has matching parentheses and quotation marks."},
-        {"heading": "Use clear lines", "body": "Put separate instructions on separate lines. Later, indentation will show which instructions belong inside a block."},
-        {"heading": "Remember", "body": "Syntax is how code is written. Read the exact error line and check its paired symbols first."}
+      "id": "stage-3",
+      "stageNumber": 3,
+      "title": "Stage 3: Advanced",
+      "subtitle": "Decorators, context managers, testing, databases, APIs & concurrency",
+      "estimatedHours": 16,
+      "badge": "bolt",
+      "projects": [
+        {
+          "id": "P3-01",
+          "title": "Weather App with API Integration",
+          "description": "Construct a live terminal weather forecasting tool querying a public REST API, formatting JSON payloads, and caching recent searches in SQLite.",
+          "deliverable": "A complete API client featuring error recovery, dataclasses, and caching."
+        },
+        {
+          "id": "P3-02",
+          "title": "High-Throughput Web Scraper",
+          "description": "Create an asynchronous web scraper using asyncio and HTTP client to fetch, parse, and extract structured data from multiple web pages concurrently.",
+          "deliverable": "A concurrent web crawler with rate limiting, logging, and CSV export."
+        }
       ],
-      "examples": [
-        {"title": "A correctly paired print", "code": "print(\"Python is ready\")", "output": "Python is ready", "explanation": "The opening parenthesis and quote each have a matching close."},
-        {"title": "Fix the missing quote", "code": "print(\"Welcome!\")", "output": "Welcome!", "explanation": "The text now has both opening and closing quotation marks."}
+      "tasks": [
+        {
+          "id": "L3-01",
+          "title": "Decorators, Context Managers, Type Hints",
+          "subtitle": "@wraps, functools, contextlib & modern static type annotations",
+          "stageId": "stage-3",
+          "order": 13,
+          "minutes": 12,
+          "overview": "Write expressive meta-programming code. Understand how function decorators wrap behavior with @syntax, create custom context managers with __enter__/__exit__, and leverage type hints for static analysis.",
+          "lesson": [
+            {
+              "heading": "Function Decorators and @ Syntax",
+              "body": "A decorator is a callable that takes a function as an argument and returns an augmented wrapper function. Decorators cleanly add cross-cutting concerns like logging, timing, and authentication."
+            },
+            {
+              "heading": "Custom Context Managers",
+              "body": "Classes that implement __enter__() and __exit__() can be used with the 'with' statement. Alternatively, contextlib.contextmanager provides a generator-based shortcut."
+            },
+            {
+              "heading": "Type Hints and Static Typing",
+              "body": "Python 3 supports type hints: def query(name: str, limit: int = 10) -> list[str]:. Type hints document code intent and allow static type checkers like mypy to catch bugs before execution."
+            }
+          ],
+          "examples": [
+            {
+              "title": "A basic logging decorator",
+              "code": "def announce(func):\n    def wrapper(*args, **kwargs):\n        print(\"Executing function...\")\n        return func(*args, **kwargs)\n    return wrapper\n\n@announce\ndef ping():\n    return \"PONG\"\n\nprint(ping())",
+              "output": "Executing function...\nPONG",
+              "explanation": "The @announce decorator intercepts the call, prints the announcement, and executes ping."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L3-01-q1",
+              "type": "yesNo",
+              "prompt": "Do Python type hints enforce runtime type restrictions by default?",
+              "answer": "no",
+              "aiExplanation": "Correct! Type hints are ignored by the Python interpreter at runtime; they are used by linters and IDEs."
+            },
+            {
+              "id": "L3-01-q2",
+              "type": "multipleChoice",
+              "prompt": "Which symbol is used above a function definition to apply a decorator?",
+              "options": [
+                "@",
+                "#",
+                "$"
+              ],
+              "answer": "@",
+              "aiExplanation": "Correct! The @decorator syntax is Python's decorator application symbol."
+            },
+            {
+              "id": "L3-01-q3",
+              "type": "code",
+              "prompt": "Write a typed function greet(name: str) -> str that returns f\"Hi, {name}\". Call and print greet(\"Sam\").",
+              "tests": [
+                {
+                  "stdout": "Hi, Sam\n"
+                }
+              ],
+              "aiExplanation": "Great! You defined a typed function with annotations and returned the expected greeting."
+            }
+          ],
+          "project": {
+            "title": "Execution Timer Decorator",
+            "scenario": "A performance monitoring framework needs a decorator that announces execution start and completion.",
+            "friendPrompt": "Hey {name}, how do I build a decorator that wraps any function with start and finish notices?",
+            "steps": [
+              "Define a decorator time_tracker.",
+              "Wrap the target function call.",
+              "Apply to a test function and verify output."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Start",
+                  "Task Done",
+                  "End"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L3-02",
+          "title": "Testing (pytest), Debugging, Logging",
+          "subtitle": "Unit assertions, pytest fixtures, pdb breakpoints & logging hierarchy",
+          "stageId": "stage-3",
+          "order": 14,
+          "minutes": 11,
+          "overview": "Build resilient, production-ready code. Write unit tests with assertions and pytest fixtures, troubleshoot issues using the interactive pdb debugger, and replace print statements with Python's logging module.",
+          "lesson": [
+            {
+              "heading": "Unit Testing with Assertions & pytest",
+              "body": "Automated tests verify that your functions behave according to contract. In pytest, simply write functions starting with test_ and use standard assert statements: assert calculate_tax(100) == 10."
+            },
+            {
+              "heading": "Interactive Debugging with breakpoint()",
+              "body": "Python 3.7+ includes built-in breakpoint(), which drops execution straight into the pdb debugger. Inspect local variables, step through lines, and evaluate expressions live."
+            },
+            {
+              "heading": "Structured Logging",
+              "body": "The logging module provides standardized logging levels: DEBUG, INFO, WARNING, ERROR, CRITICAL. Logging includes timestamps, module origin, and can output to both console and files simultaneously."
+            }
+          ],
+          "examples": [
+            {
+              "title": "A standard test assertion",
+              "code": "def multiply(a, b):\n    return a * b\n\ndef test_multiply():\n    assert multiply(3, 4) == 12\n    print(\"Test passed!\")\n\ntest_multiply()",
+              "output": "Test passed!",
+              "explanation": "The assert statement succeeds silently when True, confirming expected behavior."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L3-02-q1",
+              "type": "multipleChoice",
+              "prompt": "Which logging level represents a critical problem that may halt the program?",
+              "options": [
+                "CRITICAL",
+                "INFO",
+                "DEBUG"
+              ],
+              "answer": "CRITICAL",
+              "aiExplanation": "Correct! CRITICAL is the highest severity level in Python's standard logging hierarchy."
+            },
+            {
+              "id": "L3-02-q2",
+              "type": "yesNo",
+              "prompt": "Does an 'assert False' statement raise an AssertionError?",
+              "answer": "yes",
+              "aiExplanation": "Correct! An assertion that evaluates to False immediately triggers an AssertionError."
+            },
+            {
+              "id": "L3-02-q3",
+              "type": "code",
+              "prompt": "Write a test that asserts 5 + 5 == 10, then prints \"Assertions verified\".",
+              "tests": [
+                {
+                  "stdout": "Assertions verified\n"
+                }
+              ],
+              "aiExplanation": "Nice work! Assertions form the bedrock of automated testing."
+            }
+          ],
+          "project": {
+            "title": "Automated Test Suite for Math Utilities",
+            "scenario": "A shared math library requires a test runner function verifying addition and division edge cases.",
+            "friendPrompt": "Hey {name}, how do I structure a quick test function that verifies mathematical operations with assertions?",
+            "steps": [
+              "Define test_calculations().",
+              "Assert 10 * 2 == 20.",
+              "Print 'All 2 tests passed'."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "All 2 tests passed"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L3-03",
+          "title": "Clean Code (PEP 8), Git Basics",
+          "subtitle": "Formatting conventions, linters (flake8/black), commits & branching",
+          "stageId": "stage-3",
+          "order": 15,
+          "minutes": 10,
+          "overview": "Professional code is written for humans to read. Follow PEP 8 style standards, use linters, and master essential Git version control commands (status, branch, commit, merge) for team collaboration.",
+          "lesson": [
+            {
+              "heading": "PEP 8 Style Guide Principles",
+              "body": "PEP 8 is the official Python style guide. Key conventions include:\n- 4 spaces per indentation level (never tabs)\n- snake_case for functions and variables\n- PascalCase for class names\n- UPPER_CASE for constants\n- Imports grouped at the top of the file"
+            },
+            {
+              "heading": "Linters and Formatters",
+              "body": "Modern teams use tools like Black (uncompromising code formatter) and Flake8/Ruff (linter) to enforce consistent formatting across repositories automatically."
+            },
+            {
+              "heading": "Essential Git Workflow",
+              "body": "Git tracks historical changes:\n- git status: inspect modified files\n- git add & git commit -m: record a milestone\n- git branch & git checkout -b: create isolated feature branches\n- git merge / pull request: integrate changes"
+            }
+          ],
+          "examples": [
+            {
+              "title": "PEP 8 compliant naming and structure",
+              "code": "MAX_RETRIES = 3\n\nclass DataPipeline:\n    def process_records(self, record_list):\n        return len(record_list)\n\npipeline = DataPipeline()\nprint(pipeline.process_records([1, 2, 3]))",
+              "output": "3",
+              "explanation": "Constant in UPPER_CASE, class in PascalCase, and methods in snake_case follow PEP 8."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L3-03-q1",
+              "type": "multipleChoice",
+              "prompt": "According to PEP 8, what naming convention should be used for function names?",
+              "options": [
+                "snake_case",
+                "camelCase",
+                "PascalCase"
+              ],
+              "answer": "snake_case",
+              "aiExplanation": "Correct! Functions and variable names in Python should use lowercase words separated by underscores."
+            },
+            {
+              "id": "L3-03-q2",
+              "type": "yesNo",
+              "prompt": "Does PEP 8 recommend using 4 spaces per indentation level?",
+              "answer": "yes",
+              "aiExplanation": "Spot on! 4 spaces is the standard indentation recommended by PEP 8."
+            },
+            {
+              "id": "L3-03-q3",
+              "type": "code",
+              "prompt": "Declare a PEP 8 compliant constant APP_VERSION = \"2.1\" and print it.",
+              "tests": [
+                {
+                  "stdout": "2.1\n"
+                }
+              ],
+              "aiExplanation": "Well done! Module-level constants are named in all capital letters."
+            }
+          ],
+          "project": {
+            "title": "Code Style Auditor",
+            "scenario": "A development team wants a small script that checks whether a variable name string adheres to snake_case.",
+            "friendPrompt": "Hey {name}, how can I write a quick check to see if an identifier is clean snake_case?",
+            "steps": [
+              "Define identifier = 'user_login_count'.",
+              "Verify it is lowercase and contains valid characters.",
+              "Print 'Valid snake_case'."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Valid snake_case"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L3-04",
+          "title": "Databases (SQLite/SQL), APIs, Web Scraping",
+          "subtitle": "sqlite3 CRUD queries, requests REST endpoints & BeautifulSoup parsing",
+          "stageId": "stage-3",
+          "order": 16,
+          "minutes": 13,
+          "overview": "Connect Python to the outside data universe. Store structured records in SQLite relational databases, consume REST APIs over HTTP, and extract content from web pages using BeautifulSoup.",
+          "lesson": [
+            {
+              "heading": "Embedded Relational Databases with sqlite3",
+              "body": "Python includes sqlite3 built-in. Connect with sqlite3.connect('app.db'), create a cursor, and execute parameterized SQL queries to avoid SQL injection: cursor.execute('INSERT INTO users VALUES (?, ?)', (name, email))."
+            },
+            {
+              "heading": "Consuming REST APIs",
+              "body": "The requests library (or urllib) performs HTTP GET, POST, PUT, and DELETE operations. Check response.status_code and parse JSON payloads with response.json()."
+            },
+            {
+              "heading": "HTML Parsing and Web Scraping",
+              "body": "Libraries like BeautifulSoup (bs4) parse HTML markup, allowing you to query elements by tags, classes, or CSS selectors to extract text, tables, and links."
+            }
+          ],
+          "examples": [
+            {
+              "title": "In-memory SQLite database operations",
+              "code": "import sqlite3\n\nconn = sqlite3.connect(\":memory:\")\ncur = conn.cursor()\ncur.execute(\"CREATE TABLE items (name TEXT, qty INT)\")\ncur.execute(\"INSERT INTO items VALUES ('Apples', 10)\")\nconn.commit()\n\ncur.execute(\"SELECT name, qty FROM items\")\nrow = cur.fetchone()\nprint(f\"{row[0]}: {row[1]}\")\nconn.close()",
+              "output": "Apples: 10",
+              "explanation": "Creates an in-memory database, inserts a row, queries it back, and closes the connection cleanly."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L3-04-q1",
+              "type": "multipleChoice",
+              "prompt": "What HTTP status code indicates a successful request?",
+              "options": [
+                "200",
+                "404",
+                "500"
+              ],
+              "answer": "200",
+              "aiExplanation": "Correct! HTTP 200 OK signals that the request succeeded."
+            },
+            {
+              "id": "L3-04-q2",
+              "type": "yesNo",
+              "prompt": "Should you format variables directly into SQL strings using f-strings instead of parameterized queries?",
+              "answer": "no",
+              "aiExplanation": "Correct! Direct string formatting in SQL introduces SQL injection vulnerabilities; always use parameterized placeholders (?)."
+            },
+            {
+              "id": "L3-04-q3",
+              "type": "code",
+              "prompt": "Import sqlite3, connect to ':memory:', create a cursor, and print \"Connected to SQLite\".",
+              "tests": [
+                {
+                  "stdout": "Connected to SQLite\n"
+                }
+              ],
+              "aiExplanation": "Nice work! sqlite3 is built right into the Python standard library."
+            }
+          ],
+          "project": {
+            "title": "Contact Book SQLite Database",
+            "scenario": "A local contacts tool creates a SQLite table, inserts one contact, and prints the total contact count.",
+            "friendPrompt": "Hey {name}, how do I set up an in-memory SQLite table and check how many records are stored?",
+            "steps": [
+              "Connect to ':memory:'.",
+              "Create contacts table and insert 1 row.",
+              "Select count and print result."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Total contacts: 1"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "L3-05",
+          "title": "Concurrency: Threads, Multiprocessing, Asyncio",
+          "subtitle": "GIL, threading, multiprocessing pools & async/await event loops",
+          "stageId": "stage-3",
+          "order": 17,
+          "minutes": 13,
+          "overview": "Execute workloads concurrently. Understand Python's Global Interpreter Lock (GIL), choose between I/O-bound threading, CPU-bound multiprocessing, and modern non-blocking asynchronous programming with asyncio.",
+          "lesson": [
+            {
+              "heading": "The Global Interpreter Lock (GIL)",
+              "body": "CPython uses a mutex called the GIL to ensure only one thread executes Python bytecode at a time. Consequently, threading works well for I/O-bound tasks (network/disk waits), but does not speed up CPU-bound math."
+            },
+            {
+              "heading": "Multiprocessing for CPU Workloads",
+              "body": "The multiprocessing module bypasses the GIL by spawning distinct operating system processes, each with its own Python interpreter and memory space, utilizing multi-core processors effectively."
+            },
+            {
+              "heading": "Asynchronous I/O with asyncio",
+              "body": "asyncio provides single-threaded cooperative multitasking using an event loop. Define coroutines with async def and pause them cooperatively with await to handle thousands of concurrent network connections without thread overhead."
+            }
+          ],
+          "examples": [
+            {
+              "title": "A basic asyncio coroutine",
+              "code": "import asyncio\n\nasync def fetch_data():\n    return \"Payload received\"\n\nasync def main():\n    result = await fetch_data()\n    print(result)\n\nasyncio.run(main())",
+              "output": "Payload received",
+              "explanation": "async def creates a coroutine, and asyncio.run executes it inside an event loop."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L3-05-q1",
+              "type": "multipleChoice",
+              "prompt": "Which concurrency model is optimal for CPU-heavy tasks on multi-core machines in Python?",
+              "options": [
+                "multiprocessing",
+                "threading",
+                "asyncio"
+              ],
+              "answer": "multiprocessing",
+              "aiExplanation": "Correct! multiprocessing spawns separate processes, each bypassing the GIL to use independent CPU cores."
+            },
+            {
+              "id": "L3-05-q2",
+              "type": "yesNo",
+              "prompt": "Can a coroutine declared with 'async def' use the 'await' keyword inside its body?",
+              "answer": "yes",
+              "aiExplanation": "Spot on! Coroutines defined with 'async def' use 'await' to yield control to the event loop."
+            },
+            {
+              "id": "L3-05-q3",
+              "type": "code",
+              "prompt": "Import asyncio, define async def main() returning \"Async OK\", run it with asyncio.run(main()), and print the result.",
+              "tests": [
+                {
+                  "stdout": "Async OK\n"
+                }
+              ],
+              "aiExplanation": "Great! asyncio.run handles the event loop lifecycle cleanly."
+            }
+          ],
+          "project": {
+            "title": "Parallel Task Dispatcher",
+            "scenario": "A background task coordinator dispatches 2 async jobs concurrently and prints when both are resolved.",
+            "friendPrompt": "Hey {name}, how do I run 2 async tasks together and collect both results?",
+            "steps": [
+              "Define two simple coroutines.",
+              "Await both and collect outputs.",
+              "Print 'Both tasks completed'."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Both tasks completed"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "stage-4",
+      "stageNumber": 4,
+      "title": "Stage 4: Mastery",
+      "subtitle": "Choose your specialized track & complete a real-world capstone project",
+      "estimatedHours": 24,
+      "badge": "trophy",
+      "tracks": [
+        {
+          "id": "web",
+          "title": "Web Development Track",
+          "subtitle": "Backend architectures with Flask, FastAPI & Django",
+          "description": "Design and build production-grade web APIs and full-stack services. Learn routing, middleware, request lifecycle, database modeling with ORMs, JWT authentication, and cloud deployment.",
+          "icon": "web",
+          "technologies": [
+            "FastAPI",
+            "Flask",
+            "Django",
+            "SQLAlchemy",
+            "Pydantic",
+            "Uvicorn"
+          ],
+          "capstone": {
+            "id": "CAP-WEB",
+            "title": "Full-Featured RESTful API Service",
+            "scenario": "Build a secure production REST API for a team collaboration platform with user authentication, role-based access control, task CRUD endpoints, and SQLite/PostgreSQL persistence.",
+            "requirements": [
+              "Implement user registration, login, and JWT token authentication.",
+              "Create REST endpoints for task creation, listing, updating, and deletion.",
+              "Use Pydantic models for request validation and response schemas.",
+              "Write comprehensive test cases covering edge cases."
+            ]
+          }
+        },
+        {
+          "id": "data",
+          "title": "Data Science & Analytics Track",
+          "subtitle": "Numerical analysis with NumPy, Pandas & Matplotlib",
+          "description": "Transform raw datasets into actionable insights. Master high-dimensional NumPy arrays, Pandas DataFrames for data wrangling and cleaning, statistical summaries, and exploratory visualization charts.",
+          "icon": "chart",
+          "technologies": [
+            "NumPy",
+            "Pandas",
+            "Matplotlib",
+            "Seaborn",
+            "Jupyter"
+          ],
+          "capstone": {
+            "id": "CAP-DATA",
+            "title": "Exploratory Data Analysis & Visual Dashboard",
+            "scenario": "Perform an end-to-end data analysis on a real-world dataset (e.g. global sales or climate records), identify trends, compute key metrics, and generate visual charts.",
+            "requirements": [
+              "Load and clean a multi-column dataset, handling missing values.",
+              "Compute aggregated statistical metrics and group-by summaries.",
+              "Generate line charts, histograms, and heatmaps.",
+              "Export an analytical findings report with insights."
+            ]
+          }
+        },
+        {
+          "id": "automation",
+          "title": "Automation & Scripting Track",
+          "subtitle": "Workplace bots, file processors & system schedulers",
+          "description": "Automate tedious digital tasks. Create automated file sorters, Excel spreadsheet manipulators with openpyxl, PDF form fillers, scheduled cron background runners, and notification bots.",
+          "icon": "cog",
+          "technologies": [
+            "OpenPyXL",
+            "PyPDF2",
+            "Schedule",
+            "Requests",
+            "Subprocess"
+          ],
+          "capstone": {
+            "id": "CAP-AUTO",
+            "title": "Autonomous Workplace Automation Suite",
+            "scenario": "Develop a multi-function automation tool that monitors a directory, ingests daily expense spreadsheets, merges data into a master report, and creates summary emails.",
+            "requirements": [
+              "Monitor a folder for new incoming data files.",
+              "Parse Excel/CSV entries, validate formats, and aggregate totals.",
+              "Generate an executive PDF/HTML report automatically.",
+              "Log all processing runs with timestamps."
+            ]
+          }
+        },
+        {
+          "id": "ai_ml",
+          "title": "AI & Machine Learning Track",
+          "subtitle": "Scikit-Learn, Gemini APIs & intelligent agents",
+          "description": "Enter the world of artificial intelligence. Master machine learning workflows with scikit-learn, prompt engineering with the Gemini API, semantic search using embeddings, and retrieval-augmented generation (RAG).",
+          "icon": "brain",
+          "technologies": [
+            "Scikit-Learn",
+            "Gemini API",
+            "ChromaDB",
+            "NumPy",
+            "HuggingFace"
+          ],
+          "capstone": {
+            "id": "CAP-AI",
+            "title": "Intelligent Knowledge Assistant with Gemini",
+            "scenario": "Construct a smart AI assistant that indexes documentation files, retrieves relevant context using vector similarity, and generates accurate answers via the Gemini API.",
+            "requirements": [
+              "Ingest and chunk knowledge base documents.",
+              "Generate text embeddings and store them in a local index.",
+              "Build a query pipeline that retrieves top chunks and crafts a grounded prompt.",
+              "Stream responses back to the user with sources cited."
+            ]
+          }
+        },
+        {
+          "id": "security",
+          "title": "Cybersecurity & Scripting Track",
+          "subtitle": "Network tools, cryptography & vulnerability auditors",
+          "description": "Understand digital security by writing security tools in Python. Learn raw socket programming, cryptographic hashing with hashlib, packet inspection, API vulnerability audits, and safe penetration testing scripts.",
+          "icon": "shield",
+          "technologies": [
+            "Socket",
+            "Hashlib",
+            "Cryptography",
+            "Scapy",
+            "Requests"
+          ],
+          "capstone": {
+            "id": "CAP-SEC",
+            "title": "Network Security & Port Vulnerability Scanner",
+            "scenario": "Develop a multi-threaded network scanner that checks for open ports, inspects SSL/TLS certificates, verifies HTTP security headers, and outputs a formatted vulnerability report.",
+            "requirements": [
+              "Perform threaded TCP port scanning on authorized targets.",
+              "Inspect HTTP response headers for missing security flags (CSP, HSTS).",
+              "Validate cryptographic hashes of downloaded files against checksums.",
+              "Generate a structured security audit summary report."
+            ]
+          }
+        }
       ],
-      "practicals": [
-        {"id": "L1-03-q1", "type": "multipleChoice", "prompt": "Which line has matching quotes and parentheses?", "options": ["print(\"Hi\")", "print(\"Hi)", "print(\"Hi\""], "answer": "print(\"Hi\")"},
-        {"id": "L1-03-q2", "type": "fixTheBug", "prompt": "Fix the missing closing quote: print(\"Good job!)", "answer": "print(\"Good job!\")", "tests": [{"stdout": "Good job!\n"}]},
-        {"id": "L1-03-q3", "type": "code", "prompt": "Write a valid print instruction that displays Syntax matters.", "tests": [{"stdout": "Syntax matters.\n"}]}
-      ],
-      "project": {
-        "title": "Repair a welcome message",
-        "scenario": "A teammate typed a welcome message, but a missing quote makes Python stop before it can display anything.",
-        "friendPrompt": "Hey {name}, my welcome message keeps giving me a syntax error. Can you spot what’s missing and help me get it to print?",
-        "steps": ["Read the line and find the unmatched symbol.", "Add the missing closing quote or parenthesis.", "Run the corrected line and check the output."],
-        "tests": [{"stdoutLines": ["Welcome aboard!"]}]
-      }
+      "tasks": [
+        {
+          "id": "L4-01",
+          "title": "Specialization Foundations",
+          "subtitle": "Architecture, domain tools, libraries & design patterns",
+          "stageId": "stage-4",
+          "order": 18,
+          "minutes": 15,
+          "overview": "Dive into your chosen specialization track. Understand the foundational design patterns, framework architecture, and industry practices that professional Python engineers rely on every day.",
+          "lesson": [
+            {
+              "heading": "Track Architecture & Mental Models",
+              "body": "Every specialized track builds on core Python concepts: Web development uses request/response pipelines; Data Science uses vectorized memory blocks; Automation uses process I/O and schedules; AI/ML uses mathematical weights and context windows; Security uses network protocol packets."
+            },
+            {
+              "heading": "Production Best Practices",
+              "body": "In production, code must be maintainable, observable, and secured. Use environment variables for secrets, configure structured logging, manage package dependencies with lockfiles, and run continuous testing."
+            }
+          ],
+          "examples": [
+            {
+              "title": "Domain configuration pattern",
+              "code": "config = {\"environment\": \"production\", \"track\": \"active\"}\nprint(f\"Engine ready: {config['environment']}\")",
+              "output": "Engine ready: production",
+              "explanation": "Production configurations use structured environment dictionaries."
+            }
+          ],
+          "practicals": [
+            {
+              "id": "L4-01-q1",
+              "type": "yesNo",
+              "prompt": "Should production secrets (like API keys and passwords) be hardcoded directly into source files?",
+              "answer": "no",
+              "aiExplanation": "Correct! Secrets should always be loaded from environment variables or secure key vaults."
+            },
+            {
+              "id": "L4-01-q2",
+              "type": "multipleChoice",
+              "prompt": "Which file locks exact package versions to guarantee reproducible builds?",
+              "options": [
+                "requirements.lock or pyproject.toml",
+                "README.md",
+                "setup.cfg"
+              ],
+              "answer": "requirements.lock or pyproject.toml",
+              "aiExplanation": "Correct! Lockfiles ensure identical dependency versions across machines."
+            },
+            {
+              "id": "L4-01-q3",
+              "type": "code",
+              "prompt": "Print \"Track initialized\" to confirm your specialization track is active.",
+              "tests": [
+                {
+                  "stdout": "Track initialized\n"
+                }
+              ],
+              "aiExplanation": "Well done! You are ready to tackle your capstone project."
+            }
+          ],
+          "project": {
+            "title": "Capstone Preparation Milestone",
+            "scenario": "Initialize your project repository structure, define your configuration file, and verify your chosen track dependencies.",
+            "friendPrompt": "Hey {name}, how should I lay out our capstone repository before we start building?",
+            "steps": [
+              "Select your track.",
+              "Create project directories: src, tests, docs.",
+              "Print confirmation of project scaffolding."
+            ],
+            "tests": [
+              {
+                "stdoutLines": [
+                  "Capstone scaffolding ready"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }
