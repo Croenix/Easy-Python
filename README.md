@@ -1,6 +1,6 @@
 # Easy Python
 
-An Android-first, offline-first Flutter app for learning Python through short lessons, deterministic practice, and an optional on-device AI tutor. The AI explains and gives hints; answer evaluation is handled by the answer key or the local Python runner.
+An Android-first, offline-first Flutter app for learning Python through structured lessons, practical exercises, and a PyCharm-inspired mobile IDE simulator. The teaching approach uses small steps, worked examples, practice, feedback, and projects. It is a learning design, not a named AI model.
 
 ## Build and run
 
@@ -12,7 +12,7 @@ flutter test
 flutter run
 ```
 
-Create a debug APK with `flutter build apk --debug`. The tutor's GGUF model is downloaded separately to app storage on first use, with resume and SHA-256 validation. The model is not included in the app package. Internet is needed for that first model download; lessons and practice remain available offline.
+Create a debug APK with `flutter build apk --debug`. The optional GGUF language model is downloaded separately to app storage on first use, with resume and SHA-256 validation. The model is not included in the app package. Internet is needed for that first model download; lessons and practice remain available offline.
 
 ## Learning content
 
@@ -22,9 +22,13 @@ The setup flow records learner preferences and builds a starting plan. The lesso
 
 ## On-device tutor
 
-`TutorModel` is the swappable inference interface. Android uses llama.cpp through `llama_flutter_android`; the standard model is Qwen2.5-Coder-1.5B-Instruct Q4, and the small-device selection is Qwen3-0.6B Q4. The tutor uses JSON-shaped prompts, validates the response, retries once, and falls back to prepared hints. This Flutter plugin does not expose grammar-based constrained decoding, so JSON validity is enforced by parsing and fallback rather than a native grammar constraint.
+`TutorModel` is the swappable inference interface. Android uses llama.cpp through `llama_flutter_android`; the standard model is Qwen2.5-Coder-1.5B-Instruct Q4, and the small-device selection is Qwen3-0.6B Q4. The optional local LLM supports Python Q&A, code explanations, debugging, and test suggestions in both the lesson tutor and IDE tutor. Without the model, lessons, deterministic answer evaluation, prepared hints, and local Python execution remain available.
 
-No OpenAI API key, server, account, or cloud inference is configured. Learner progress is stored locally with SharedPreferences.
+No API key, server, account, or cloud inference is configured. Learner progress is stored locally with SharedPreferences.
+
+## Python IDE simulator
+
+Python Studio provides a mobile, PyCharm-inspired practice interface with a project file strip, line-numbered editor, Python symbol bar, terminal output, local project saving, and a Run Tests action. Project `.py` files can import one another in the local Pyodide sandbox. This is an educational simulator, not a full desktop IDE: it does not include a native Python installation, arbitrary filesystem access, package installation, or unrestricted terminal commands.
 
 ## Verification and known gaps
 

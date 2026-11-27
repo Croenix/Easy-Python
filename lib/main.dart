@@ -13,7 +13,7 @@ import 'on_device_tutor.dart';
 import 'personalization.dart';
 import 'pyodide_runner.dart';
 import 'python_ide_screen.dart';
-import 'supernova_ai.dart';
+import 'python_teaching_mode.dart';
 
 const ink = AppColors.ink;
 const primary = AppColors.blue;
@@ -246,7 +246,7 @@ class LearnerState extends ChangeNotifier {
   String pythonLevel = 'Beginner';
   String learningStyle = 'Hands-on';
   String language = 'English';
-  String buddyName = 'Supernova AI';
+  String buddyName = 'Python Coach';
   String tutorInstructions = '';
   String selectedStage4Track = 'web';
   final Set<String> quickReviewTasks = {};
@@ -285,6 +285,7 @@ class LearnerState extends ChangeNotifier {
       dailyTime: dailyTime,
     );
   }
+
   int get nextRankXp => xp < 500
       ? 500
       : xp < 1500
@@ -321,16 +322,25 @@ class LearnerState extends ChangeNotifier {
     return idx != -1 ? idx : tasks.length - 1;
   }
 
-  TaskStatus taskStatus(String taskId, int globalIndex, List<ContentTask> allTasks) {
+  TaskStatus taskStatus(
+    String taskId,
+    int globalIndex,
+    List<ContentTask> allTasks,
+  ) {
     if (completed.contains(taskId)) {
       if (quickReviewTasks.contains(taskId)) return TaskStatus.quickReview;
       return TaskStatus.completed;
     }
-    final firstUncompleted = allTasks.indexWhere((t) => !completed.contains(t.id));
-    if (firstUncompleted == -1 || globalIndex == firstUncompleted || globalIndex <= selectedLesson) {
+    final firstUncompleted = allTasks.indexWhere(
+      (t) => !completed.contains(t.id),
+    );
+    if (firstUncompleted == -1 ||
+        globalIndex == firstUncompleted ||
+        globalIndex <= selectedLesson) {
       return TaskStatus.current;
     }
-    if (globalIndex == 0 || (globalIndex > 0 && completed.contains(allTasks[globalIndex - 1].id))) {
+    if (globalIndex == 0 ||
+        (globalIndex > 0 && completed.contains(allTasks[globalIndex - 1].id))) {
       return TaskStatus.current;
     }
     return TaskStatus.locked;
@@ -368,8 +378,12 @@ class LearnerState extends ChangeNotifier {
       learningStyle = data['learningStyle'] as String? ?? learningStyle;
       language = data['language'] as String? ?? language;
       final savedBuddy = data['buddyName'] as String?;
-      buddyName = (savedBuddy == null || savedBuddy == 'Pixel')
-          ? 'Supernova AI'
+      buddyName =
+          (savedBuddy == null ||
+              savedBuddy == 'Pixel' ||
+              savedBuddy == 'Supernova AI' ||
+              savedBuddy == 'Supernova')
+          ? 'Python Coach'
           : savedBuddy;
       tutorInstructions = data['tutorInstructions'] as String? ?? '';
       selectedStage4Track = data['selectedStage4Track'] as String? ?? 'web';
@@ -771,7 +785,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       _ => 'Your learning plan',
     };
     final pageHint = switch (step) {
-      1 => 'A few details help Supernova AI make this feel personal.',
+      1 =>
+        'A few details help your Python coach tailor the learning experience.',
       2 => 'We will start at a level that feels right for you.',
       3 => 'Choose a pace and style that fit your day.',
       _ => 'A simple path shaped around your time and experience.',
@@ -917,8 +932,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                   const SizedBox(height: 18),
                   _ChoiceGroup(
-                    title: 'Choose your AI mentor',
-                    options: const ['Supernova AI', 'Nova', 'Byte'],
+                    title: 'Choose your tutor name',
+                    options: const ['Python Coach', 'Nova', 'Byte'],
                     value: learner.buddyName,
                     onSelect: (v) => setState(() => learner.buddyName = v),
                   ),
@@ -939,7 +954,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Text('Starting point: ${learner.pythonLevel}', style: TextStyle(color: context.appText)),
+                          Text(
+                            'Starting point: ${learner.pythonLevel}',
+                            style: TextStyle(color: context.appText),
+                          ),
                           Text(
                             'Daily pace: ${learner.lessonsPerDay} lesson${learner.lessonsPerDay == 1 ? '' : 's'}',
                             style: TextStyle(color: context.appText),
@@ -948,13 +966,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             'Estimated finish: ${learner.estimatedFinishDate.toLocal().toString().split(' ').first}',
                             style: TextStyle(color: context.appText),
                           ),
-                          Text('Goal: ${learner.goal}', style: TextStyle(color: context.appText)),
-                          Text('Learning style: ${learner.learningStyle}', style: TextStyle(color: context.appText)),
-                          Text('Buddy: ${learner.buddyName}', style: TextStyle(color: context.appText)),
+                          Text(
+                            'Goal: ${learner.goal}',
+                            style: TextStyle(color: context.appText),
+                          ),
+                          Text(
+                            'Learning style: ${learner.learningStyle}',
+                            style: TextStyle(color: context.appText),
+                          ),
+                          Text(
+                            'Buddy: ${learner.buddyName}',
+                            style: TextStyle(color: context.appText),
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'Your plan adjusts as you practice. You can change your daily time later.',
-                            style: TextStyle(height: 1.45, color: context.appMuted),
+                            style: TextStyle(
+                              height: 1.45,
+                              color: context.appMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -1032,15 +1062,31 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     if (level == 'Advanced') {
       final reviewIds = [
-        'L1-01', 'L1-02', 'L1-03', 'L1-04', 'L1-05', 'L1-06', 'L1-07',
-        'L2-01', 'L2-02', 'L2-03', 'L2-04', 'L2-05',
+        'L1-01',
+        'L1-02',
+        'L1-03',
+        'L1-04',
+        'L1-05',
+        'L1-06',
+        'L1-07',
+        'L2-01',
+        'L2-02',
+        'L2-03',
+        'L2-04',
+        'L2-05',
       ];
       widget.learner.quickReviewTasks.addAll(reviewIds);
       widget.learner.completed.addAll(reviewIds);
       widget.learner.selectedLesson = 12; // Stage 3 Topic 13 (0-indexed: 12)
     } else if (level == 'Intermediate') {
       final reviewIds = [
-        'L1-01', 'L1-02', 'L1-03', 'L1-04', 'L1-05', 'L1-06', 'L1-07',
+        'L1-01',
+        'L1-02',
+        'L1-03',
+        'L1-04',
+        'L1-05',
+        'L1-06',
+        'L1-07',
       ];
       widget.learner.quickReviewTasks.addAll(reviewIds);
       widget.learner.completed.addAll(reviewIds);
@@ -1255,7 +1301,9 @@ class _ChoiceGroup extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(
                     color: value == option
-                        ? (context.isDarkMode ? const Color(0xFF90C2FF) : primary)
+                        ? (context.isDarkMode
+                              ? const Color(0xFF90C2FF)
+                              : primary)
                         : context.appBorder,
                   ),
                 ),
@@ -1576,11 +1624,14 @@ class HomeScreen extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                'Dedicated Python IDE',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  color: context.appText,
+                              Flexible(
+                                child: Text(
+                                  'Dedicated Python IDE',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: context.appText,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -1606,7 +1657,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            'Write, run & debug scripts with Supernova AI',
+                            'Write, run & debug scripts in the Python IDE',
                             style: TextStyle(
                               fontSize: 12,
                               color: context.appMuted,
@@ -1622,7 +1673,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // Supernova AI Card
+          // Python teaching mode card
           Card(
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -1667,7 +1718,7 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Supernova AI Coach',
+                            'Your Python Learning Path',
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
                               color: context.appText,
@@ -2275,6 +2326,7 @@ class _LessonSearchDelegate extends SearchDelegate<int?> {
       ),
     );
   }
+
   @override
   List<Widget>? buildActions(BuildContext context) => [
     IconButton(
@@ -2441,7 +2493,11 @@ class _PathScreenState extends State<PathScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.alt_route_rounded, color: primary, size: 26),
+                child: const Icon(
+                  Icons.alt_route_rounded,
+                  color: primary,
+                  size: 26,
+                ),
               ),
             ],
           ),
@@ -2454,7 +2510,11 @@ class _PathScreenState extends State<PathScreen> {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF6B82FA), Color(0xFF566DE8), Color(0xFF755EF2)],
+                colors: [
+                  Color(0xFF6B82FA),
+                  Color(0xFF566DE8),
+                  Color(0xFF755EF2),
+                ],
               ),
               borderRadius: BorderRadius.circular(26),
               boxShadow: const [
@@ -2513,7 +2573,10 @@ class _PathScreenState extends State<PathScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: .2),
                               borderRadius: BorderRadius.circular(10),
@@ -2575,7 +2638,10 @@ class _PathScreenState extends State<PathScreen> {
                         backgroundColor: accent,
                         foregroundColor: AppColors.ink,
                         elevation: 3,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -2604,8 +2670,7 @@ class _PathScreenState extends State<PathScreen> {
           const SizedBox(height: 12),
 
           // The 4 Stage Cards
-          for (final stage in stages)
-            _buildStageCard(context, stage, allTasks),
+          for (final stage in stages) _buildStageCard(context, stage, allTasks),
         ],
       ),
     );
@@ -2686,7 +2751,10 @@ class _PathScreenState extends State<PathScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: context.isDarkMode
-                            ? [badgeColor.withValues(alpha: .3), badgeColor.withValues(alpha: .15)]
+                            ? [
+                                badgeColor.withValues(alpha: .3),
+                                badgeColor.withValues(alpha: .15),
+                              ]
                             : gradientColors,
                       ),
                       borderRadius: BorderRadius.circular(16),
@@ -2752,7 +2820,11 @@ class _PathScreenState extends State<PathScreen> {
                           backgroundColor: context.appSubtle,
                         ),
                         if (isFinished)
-                          const Icon(Icons.check_rounded, color: success, size: 18)
+                          const Icon(
+                            Icons.check_rounded,
+                            color: success,
+                            size: 18,
+                          )
                         else
                           Text(
                             '${(progress * 100).round()}%',
@@ -2787,7 +2859,10 @@ class _PathScreenState extends State<PathScreen> {
             if (stage.projects.isNotEmpty)
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: context.isDarkMode
                       ? const Color(0xFF222642)
@@ -2797,7 +2872,11 @@ class _PathScreenState extends State<PathScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.emoji_events_outlined, color: badgeColor, size: 20),
+                    Icon(
+                      Icons.emoji_events_outlined,
+                      color: badgeColor,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -2860,9 +2939,7 @@ class _PathScreenState extends State<PathScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: isCurrent
-            ? primary.withValues(alpha: .06)
-            : Colors.transparent,
+        color: isCurrent ? primary.withValues(alpha: .06) : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         border: isCurrent
             ? Border.all(color: primary.withValues(alpha: .25))
@@ -2873,7 +2950,10 @@ class _PathScreenState extends State<PathScreen> {
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 2,
+          ),
           leading: Icon(leadingIcon, color: iconColor, size: 26),
           title: Text(
             '${task.order}. ${task.title}',
@@ -2892,7 +2972,9 @@ class _PathScreenState extends State<PathScreen> {
             if (isLocked) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Complete the preceding topics to unlock this lesson.'),
+                  content: Text(
+                    'Complete the preceding topics to unlock this lesson.',
+                  ),
                   duration: Duration(seconds: 2),
                 ),
               );
@@ -2914,7 +2996,11 @@ class _PathScreenState extends State<PathScreen> {
       ),
       child: const Text(
         'Done ✓',
-        style: TextStyle(color: success, fontSize: 10.5, fontWeight: FontWeight.w800),
+        style: TextStyle(
+          color: success,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     ),
     TaskStatus.quickReview => Container(
@@ -2925,7 +3011,11 @@ class _PathScreenState extends State<PathScreen> {
       ),
       child: const Text(
         'Review ★',
-        style: TextStyle(color: accent, fontSize: 10.5, fontWeight: FontWeight.w800),
+        style: TextStyle(
+          color: accent,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     ),
     TaskStatus.current => Container(
@@ -2936,7 +3026,11 @@ class _PathScreenState extends State<PathScreen> {
       ),
       child: const Text(
         'Start',
-        style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     ),
     TaskStatus.locked => Container(
@@ -2947,7 +3041,11 @@ class _PathScreenState extends State<PathScreen> {
       ),
       child: const Text(
         'Locked',
-        style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: Colors.grey,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
   };
@@ -3003,7 +3101,9 @@ class _PathScreenState extends State<PathScreen> {
                   margin: const EdgeInsets.only(right: 12),
                   child: Card(
                     color: isSelected
-                        ? (context.isDarkMode ? const Color(0xFF263256) : const Color(0xFFEBF1FF))
+                        ? (context.isDarkMode
+                              ? const Color(0xFF263256)
+                              : const Color(0xFFEBF1FF))
                         : context.appSurface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
@@ -3027,18 +3127,31 @@ class _PathScreenState extends State<PathScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(trackIcon, color: isSelected ? primary : context.appMuted, size: 22),
+                                Icon(
+                                  trackIcon,
+                                  color: isSelected
+                                      ? primary
+                                      : context.appMuted,
+                                  size: 22,
+                                ),
                                 const Spacer(),
                                 if (isSelected)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: primary,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Text(
                                       'Active',
-                                      style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                               ],
@@ -3070,7 +3183,9 @@ class _PathScreenState extends State<PathScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: context.isDarkMode ? const Color(0xFF20243C) : const Color(0xFFF8F9FE),
+                color: context.isDarkMode
+                    ? const Color(0xFF20243C)
+                    : const Color(0xFFF8F9FE),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: context.appBorder),
               ),
@@ -3094,7 +3209,11 @@ class _PathScreenState extends State<PathScreen> {
                   const SizedBox(height: 6),
                   Text(
                     currentTrack.description,
-                    style: TextStyle(fontSize: 11.5, height: 1.4, color: context.appMuted),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: context.appMuted,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -3103,7 +3222,10 @@ class _PathScreenState extends State<PathScreen> {
                     children: currentTrack.technologies
                         .map(
                           (tech) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: primary.withValues(alpha: .12),
                               borderRadius: BorderRadius.circular(8),
@@ -3129,7 +3251,10 @@ class _PathScreenState extends State<PathScreen> {
                       gradient: LinearGradient(
                         colors: context.isDarkMode
                             ? [const Color(0xFF322A4E), const Color(0xFF26203E)]
-                            : [const Color(0xFFFFF7ED), const Color(0xFFFFEED9)],
+                            : [
+                                const Color(0xFFFFF7ED),
+                                const Color(0xFFFFEED9),
+                              ],
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: accent.withValues(alpha: .3)),
@@ -3139,7 +3264,11 @@ class _PathScreenState extends State<PathScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.military_tech_rounded, color: accent, size: 22),
+                            const Icon(
+                              Icons.military_tech_rounded,
+                              color: accent,
+                              size: 22,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -3156,7 +3285,11 @@ class _PathScreenState extends State<PathScreen> {
                         const SizedBox(height: 8),
                         Text(
                           currentTrack.capstone['scenario'] as String? ?? '',
-                          style: TextStyle(fontSize: 11.5, height: 1.45, color: context.appText),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            height: 1.45,
+                            color: context.appText,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         SizedBox(
@@ -3165,11 +3298,16 @@ class _PathScreenState extends State<PathScreen> {
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Starting ${currentTrack?.title} Capstone Project!'),
+                                  content: Text(
+                                    'Starting ${currentTrack?.title} Capstone Project!',
+                                  ),
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.rocket_launch_rounded, size: 16),
+                            icon: const Icon(
+                              Icons.rocket_launch_rounded,
+                              size: 16,
+                            ),
                             label: const Text('Start Capstone Project'),
                             style: FilledButton.styleFrom(
                               backgroundColor: accent,
@@ -3228,12 +3366,18 @@ class LessonScreen extends StatelessWidget {
     final lesson = (index >= 0 && index < lessons.length)
         ? lessons[index]
         : (contentTask != null
-            ? Lesson(contentTask.id, contentTask.title, contentTask.stageId, contentTask.minutes, contentTask.overview, '')
-            : lessons[0]);
-    final guide = lessonGuides[contentTask?.id ?? lesson.id] ??
-        (contentTask != null
-            ? contentTask.toGuide()
-            : lessonGuides['L1-01']!);
+              ? Lesson(
+                  contentTask.id,
+                  contentTask.title,
+                  contentTask.stageId,
+                  contentTask.minutes,
+                  contentTask.overview,
+                  '',
+                )
+              : lessons[0]);
+    final guide =
+        lessonGuides[contentTask?.id ?? lesson.id] ??
+        (contentTask != null ? contentTask.toGuide() : lessonGuides['L1-01']!);
     final done = learner.completed.contains(contentTask?.id ?? lesson.id);
     final read = learner.readLessons.contains(contentTask?.id ?? lesson.id);
     final name = learner.username.trim().isEmpty ? 'friend' : learner.username;
@@ -3293,7 +3437,7 @@ class LessonScreen extends StatelessWidget {
                     style: TextStyle(color: context.appMuted),
                   ),
                   const SizedBox(height: 14),
-                  // Supernova 5-Step Learning System Pill
+                  // Five-step learning system pill
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -3318,7 +3462,7 @@ class LessonScreen extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Supernova AI Study Flow: Spark · Fusion · Practice · Analysis · Project',
+                            'Learn: Spark · Explore · Practice · Review · Build',
                             style: TextStyle(
                               color: context.appText,
                               fontSize: 11.5,
@@ -3330,7 +3474,7 @@ class LessonScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const _SectionHeading(title: '🌟 Cosmic Spark'),
+                  const _SectionHeading(title: '🌟 Start with a spark'),
                   const SizedBox(height: 8),
                   _LessonGuideCard(guide: guide),
                   if (contentTask != null) ...[
@@ -3500,7 +3644,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
   String? selectedOption;
   String? runOutput;
   AnswerEvaluation? evaluation;
-  SupernovaAnalysis? supernovaAnalysis;
+  TeachingFeedback? teachingFeedback;
   bool runnerReady = false;
   bool checking = false;
 
@@ -3524,12 +3668,15 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     final isCode =
         !isFinished &&
         (question.type == 'code' || question.type == 'fixTheBug');
-    final isPrompt = !isFinished &&
+    final isPrompt =
+        !isFinished &&
         (isCode ||
             (question.commandPrompt != null &&
                 question.commandPrompt!.isNotEmpty) ||
             question.type == 'shortAnswer');
-    final userName = widget.learner.name.trim().isEmpty ? 'friend' : widget.learner.name.trim();
+    final userName = widget.learner.name.trim().isEmpty
+        ? 'friend'
+        : widget.learner.name.trim();
 
     return Scaffold(
       appBar: AppBar(title: Text('${widget.task.title} · Practical')),
@@ -3741,7 +3888,10 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Padding(
-                                      padding: EdgeInsets.only(top: 2, right: 8),
+                                      padding: EdgeInsets.only(
+                                        top: 2,
+                                        right: 8,
+                                      ),
                                       child: Text(
                                         '>>> ',
                                         style: TextStyle(
@@ -3876,7 +4026,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      supernovaAnalysis?.headline ??
+                                      teachingFeedback?.headline ??
                                           (evaluation!.isCorrect
                                               ? 'Right! Well done, $userName.'
                                               : 'Not quite yet, $userName.'),
@@ -3899,7 +4049,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                                   color: context.appText,
                                 ),
                               ),
-                              if (supernovaAnalysis?.cosmicTip != null ||
+                              if (teachingFeedback?.tip != null ||
                                   (question.aiExplanation != null &&
                                       question.aiExplanation!.isNotEmpty)) ...[
                                 const SizedBox(height: 8),
@@ -3926,8 +4076,8 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          supernovaAnalysis?.cosmicTip != null
-                                              ? 'Supernova Tip: ${supernovaAnalysis!.cosmicTip}'
+                                          teachingFeedback?.tip != null
+                                              ? 'Python Tip: ${teachingFeedback!.tip}'
                                               : question.aiExplanation!,
                                           style: TextStyle(
                                             fontSize: 12.5,
@@ -4037,12 +4187,12 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
   Future<void> _checkWrittenAnswer() async {
     final response = selectedOption ?? responseController.text.trim();
-    final analysis = const SupernovaEngine().analyzeSubmission(
+    final analysis = const PythonTeachingMode().analyzeSubmission(
       question: question,
       userResponse: response,
       userName: widget.learner.name,
     );
-    supernovaAnalysis = analysis;
+    teachingFeedback = analysis;
     final result = AnswerEvaluation(
       isCorrect: analysis.isCorrect,
       message: analysis.explanation,
@@ -4055,13 +4205,13 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     setState(() => checking = true);
     try {
       final runResult = await runnerKey.currentState!.run(source);
-      final analysis = const SupernovaEngine().analyzeSubmission(
+      final analysis = const PythonTeachingMode().analyzeSubmission(
         question: question,
         userResponse: source,
         userName: widget.learner.name,
         runResult: runResult,
       );
-      supernovaAnalysis = analysis;
+      teachingFeedback = analysis;
       final evaluationResult = AnswerEvaluation(
         isCorrect: analysis.isCorrect,
         message: analysis.explanation,
@@ -4095,7 +4245,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
       questionIndex++;
       selectedOption = null;
       evaluation = null;
-      supernovaAnalysis = null;
+      teachingFeedback = null;
       runOutput = null;
       responseController.clear();
     });
@@ -4103,9 +4253,14 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
   Widget _finishPanel(BuildContext context) {
     final project = widget.task.project;
-    final projectTitle = project['title'] as String? ?? 'Real-World Mini Project';
+    final projectTitle =
+        project['title'] as String? ?? 'Real-World Mini Project';
     final projectScenario = project['scenario'] as String? ?? '';
-    final projectSteps = (project['steps'] as List<dynamic>?)?.map((s) => s.toString()).toList() ?? <String>[];
+    final projectSteps =
+        (project['steps'] as List<dynamic>?)
+            ?.map((s) => s.toString())
+            .toList() ??
+        <String>[];
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -4203,10 +4358,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                 const SizedBox(height: 12),
                 const Text(
                   'Project Steps:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                 ),
                 const SizedBox(height: 6),
                 for (final step in projectSteps)
@@ -5258,7 +5410,7 @@ class _TutorScreenState extends State<TutorScreen> {
             const SizedBox(width: 10),
             const Expanded(
               child: Text(
-                'Supernova AI tutor',
+                'Python tutor',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
@@ -5303,7 +5455,7 @@ class _TutorScreenState extends State<TutorScreen> {
                   child: Text(
                     tutor.isReady
                         ? '${widget.learner.buddyName} · on-device model active'
-                        : '${widget.learner.buddyName} · Supernova AI active',
+                        : '${widget.learner.buddyName} · built-in teaching mode active',
                     style: TextStyle(
                       color: context.appText,
                       fontSize: 12,
@@ -5395,7 +5547,7 @@ class _TutorScreenState extends State<TutorScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Optional: Download offline AI model (~450MB)',
+                          'Optional: Download an on-device AI model',
                           style: TextStyle(
                             color: context.appMuted,
                             fontSize: 12,

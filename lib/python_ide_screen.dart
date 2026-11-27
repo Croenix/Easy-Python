@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'design_system.dart';
+import 'on_device_tutor.dart';
 import 'pyodide_runner.dart';
-import 'supernova_ai.dart';
 
 class PythonIdeScreen extends StatefulWidget {
   const PythonIdeScreen({
@@ -20,8 +22,8 @@ class PythonIdeScreen extends StatefulWidget {
 }
 
 class _PythonIdeScreenState extends State<PythonIdeScreen> {
-  final GlobalKey<PyodideRunnerState> runnerKey = GlobalKey<PyodideRunnerState>();
-  final SupernovaEngine supernova = const SupernovaEngine();
+  final GlobalKey<PyodideRunnerState> runnerKey =
+      GlobalKey<PyodideRunnerState>();
 
   late final Map<String, String> _files;
   late String _activeFile;
@@ -36,40 +38,107 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
   int? _executionTimeMs;
   int _lineCount = 1;
   bool _showConsole = true;
+  Timer? _saveTimer;
 
   @override
   void initState() {
     super.initState();
     _files = {
-      'main.py': widget.initialCode ??
-          '# Supernova Python IDE\n'
-          'def greet(name):\n'
-          '    return f"Hello {name}, welcome to Python!"\n\n'
-          'user = "${widget.learnerName.trim().isEmpty ? 'Coder' : widget.learnerName.trim()}"\n'
-          'print(greet(user))\n',
-      'scratch.py': '# Scratchpad for experiments\nnumbers = [1, 2, 3, 4, 5]\nsquares = [x ** 2 for x in numbers]\nprint(f"Squares: {squares}")\n',
+      'main.py':
+          widget.initialCode ??
+          '# Python IDE practice project\n'
+              'def greet(name):\n'
+              '    return f"Hello {name}, welcome to Python!"\n\n'
+              'user = "${widget.learnerName.trim().isEmpty ? 'Coder' : widget.learnerName.trim()}"\n'
+              'print(greet(user))\n',
+      'scratch.py':
+          '# Scratchpad for experiments\nnumbers = [1, 2, 3, 4, 5]\nsquares = [x ** 2 for x in numbers]\nprint(f"Squares: {squares}")\n',
+      'test_main.py':
+          '# Run this file with the Run Tests button.\n'
+          'from main import greet\n\n'
+          'assert greet("Python") == "Hello Python, welcome to Python!"\n'
+          'print("All tests passed.")\n',
     };
     _activeFile = 'main.py';
     _codeController = TextEditingController(text: _files[_activeFile]);
     _editorScrollController = ScrollController();
     _lineScrollController = ScrollController();
+    _editorScrollController.addListener(_syncLineNumbers);
 
     _updateLineCount();
     _codeController.addListener(_onCodeChanged);
+    _restoreProject();
   }
 
   @override
   void dispose() {
     _codeController.removeListener(_onCodeChanged);
+    _editorScrollController.removeListener(_syncLineNumbers);
     _codeController.dispose();
     _editorScrollController.dispose();
     _lineScrollController.dispose();
+    _saveTimer?.cancel();
     super.dispose();
+  }
+
+  void _syncLineNumbers() {
+    if (!_lineScrollController.hasClients ||
+        !_editorScrollController.hasClients) {
+      return;
+    }
+    final target = _editorScrollController.offset.clamp(
+      _lineScrollController.position.minScrollExtent,
+      _lineScrollController.position.maxScrollExtent,
+    );
+    if ((_lineScrollController.offset - target).abs() > 1) {
+      _lineScrollController.jumpTo(target);
+    }
   }
 
   void _onCodeChanged() {
     _files[_activeFile] = _codeController.text;
     _updateLineCount();
+    _scheduleSave();
+  }
+
+  String get _projectStorageKey =>
+      'python_ide_project_${widget.learnerName.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}';
+
+  Future<void> _restoreProject() async {
+    if (widget.initialCode != null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_projectStorageKey);
+    if (raw == null || !mounted) return;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final restored = decoded.map(
+        (key, value) => MapEntry(key, value.toString()),
+      );
+      if (restored.isEmpty ||
+          !restored.keys.every((name) => name.endsWith('.py'))) {
+        return;
+      }
+      setState(() {
+        _files
+          ..clear()
+          ..addAll(restored);
+        _activeFile = restored.containsKey('main.py')
+            ? 'main.py'
+            : restored.keys.first;
+        _codeController.text = _files[_activeFile] ?? '';
+        _updateLineCount();
+      });
+    } catch (_) {
+      // Ignore an invalid saved project and keep the starter files.
+    }
+  }
+
+  void _scheduleSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 450), () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_projectStorageKey, jsonEncode(_files));
+    });
   }
 
   void _updateLineCount() {
@@ -86,11 +155,14 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
       _activeFile = fileName;
       _codeController.text = _files[fileName] ?? '';
       _updateLineCount();
+      _scheduleSave();
     });
   }
 
   void _addNewFile() async {
-    final controller = TextEditingController(text: 'module_${_files.length}.py');
+    final controller = TextEditingController(
+      text: 'module_${_files.length}.py',
+    );
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -105,12 +177,33 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () {
               var val = controller.text.trim();
               if (val.isEmpty) return;
               if (!val.endsWith('.py')) val = '$val.py';
+              if (!RegExp(r'^[A-Za-z_][A-Za-z0-9_]*\.py$').hasMatch(val)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Use a Python filename with letters, numbers, and underscores.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              if (_files.containsKey(val)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('That project file already exists.'),
+                  ),
+                );
+                return;
+              }
               Navigator.pop(ctx, val);
             },
             child: const Text('Create'),
@@ -121,8 +214,12 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
 
     if (name != null && name.isNotEmpty && mounted) {
       setState(() {
+        _files[_activeFile] = _codeController.text;
         _files[name] = '# $name\n';
-        _switchFile(name);
+        _activeFile = name;
+        _codeController.text = _files[name]!;
+        _updateLineCount();
+        _scheduleSave();
       });
     }
   }
@@ -130,7 +227,9 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
   void _deleteCurrentFile() {
     if (_files.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot delete the only file in the project.')),
+        const SnackBar(
+          content: Text('Cannot delete the only file in the project.'),
+        ),
       );
       return;
     }
@@ -138,9 +237,14 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete $_activeFile?'),
-        content: const Text('This will delete this script from memory.'),
+        content: const Text(
+          'This will remove this script from the saved project.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () {
@@ -150,6 +254,7 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
                 _activeFile = _files.keys.first;
                 _codeController.text = _files[_activeFile] ?? '';
                 _updateLineCount();
+                _scheduleSave();
               });
             },
             child: const Text('Delete'),
@@ -170,12 +275,19 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
 
     _codeController.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(offset: newCursor.clamp(0, newText.length)),
+      selection: TextSelection.collapsed(
+        offset: newCursor.clamp(0, newText.length),
+      ),
     );
   }
 
   Future<void> _runCode() async {
     if (!_isRunnerReady || _isRunning) return;
+    final inputCount = RegExp(
+      r'\binput\s*\(',
+    ).allMatches(_files.values.join('\n')).length;
+    final inputs = await _collectProgramInputs(inputCount);
+    if (inputs == null || !mounted) return;
     setState(() {
       _isRunning = true;
       _showConsole = true;
@@ -185,7 +297,12 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
 
     final stopwatch = Stopwatch()..start();
     try {
-      final result = await runnerKey.currentState!.run(_codeController.text);
+      final result = await runnerKey.currentState!.run(
+        _codeController.text,
+        inputs: inputs,
+        projectFiles: Map<String, String>.of(_files),
+        timeout: const Duration(seconds: 15),
+      );
       stopwatch.stop();
 
       if (!mounted) return;
@@ -208,29 +325,87 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
     }
   }
 
-  void _askSupernova() {
+  Future<List<String>?> _collectProgramInputs(int inputCount) async {
+    if (inputCount == 0) return const [];
+    final controller = TextEditingController();
+    final values = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Program input'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This project calls input() $inputCount time(s). Enter one value per line.',
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              minLines: 1,
+              maxLines: 4,
+              keyboardType: TextInputType.multiline,
+              decoration: const InputDecoration(
+                hintText: 'Enter each value on a new line',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: const Text('Run'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return values?.split('\n');
+  }
+
+  Future<void> _runTests() async {
+    final testFiles = _files.keys
+        .where((name) => name.startsWith('test_') && name.endsWith('.py'))
+        .toList(growable: false);
+    if (testFiles.isEmpty) {
+      const fileName = 'test_main.py';
+      setState(() {
+        _files[fileName] =
+            '# Tests for main.py\n'
+            'from main import greet\n\n'
+            'assert greet("Python") == "Hello Python, welcome to Python!"\n'
+            'print("All tests passed.")\n';
+        _activeFile = fileName;
+        _codeController.text = _files[fileName]!;
+        _updateLineCount();
+        _scheduleSave();
+      });
+    } else {
+      _switchFile(testFiles.first);
+    }
+    await _runCode();
+  }
+
+  void _openAiTutor() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: context.isDarkMode ? const Color(0xFF1E2138) : Colors.white,
+      backgroundColor: context.isDarkMode
+          ? const Color(0xFF1E2138)
+          : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => _SupernovaAiSheet(
+      builder: (ctx) => _PythonAiSheet(
         learnerName: widget.learnerName,
         code: _codeController.text,
         error: _stderr,
         stdout: _stdout,
-        onApplyFix: (fixedCode) {
-          Navigator.pop(ctx);
-          setState(() {
-            _codeController.text = fixedCode;
-            _updateLineCount();
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✨ Fix applied by Supernova AI!')),
-          );
-        },
       ),
     );
   }
@@ -249,7 +424,10 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 child: Text(
                   'Code Templates',
                   style: TextStyle(
@@ -262,7 +440,8 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
               _templateItem(
                 title: 'Data Structures (Lists, Dicts, Sets)',
                 subtitle: 'Collections and manipulations in Python',
-                code: '# Data Structures Example\n'
+                code:
+                    '# Data Structures Example\n'
                     'fruits = ["apple", "banana", "cherry"]\n'
                     'fruits.append("orange")\n'
                     'prices = {"apple": 1.2, "banana": 0.8, "orange": 1.5}\n'
@@ -272,7 +451,8 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
               _templateItem(
                 title: 'Functions & Recursion (Factorial)',
                 subtitle: 'Clean modular functions with docstrings',
-                code: 'def factorial(n):\n'
+                code:
+                    'def factorial(n):\n'
                     '    """Calculate factorial of n."""\n'
                     '    if n <= 1:\n'
                     '        return 1\n'
@@ -283,7 +463,8 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
               _templateItem(
                 title: 'Class & Object-Oriented Programming',
                 subtitle: 'Classes, methods, and encapsulation',
-                code: 'class BankAccount:\n'
+                code:
+                    'class BankAccount:\n'
                     '    def __init__(self, owner, balance=0):\n'
                     '        self.owner = owner\n'
                     '        self.balance = balance\n\n'
@@ -296,7 +477,8 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
               _templateItem(
                 title: 'Algorithms: Binary Search',
                 subtitle: 'O(log n) search algorithm in pure Python',
-                code: 'def binary_search(arr, target):\n'
+                code:
+                    'def binary_search(arr, target):\n'
                     '    low, high = 0, len(arr) - 1\n'
                     '    while low <= high:\n'
                     '        mid = (low + high) // 2\n'
@@ -322,17 +504,20 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
     required String subtitle,
     required String code,
   }) => ListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(subtitle, style: TextStyle(color: context.appMuted, fontSize: 12)),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () {
-          Navigator.pop(context);
-          setState(() {
-            _codeController.text = code;
-            _updateLineCount();
-          });
-        },
-      );
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+    subtitle: Text(
+      subtitle,
+      style: TextStyle(color: context.appMuted, fontSize: 12),
+    ),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: () {
+      Navigator.pop(context);
+      setState(() {
+        _codeController.text = code;
+        _updateLineCount();
+      });
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -343,42 +528,72 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 16,
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [AppColors.blue, AppColors.violet],
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.code_rounded, color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.code_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Python IDE',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-              ),
+            const SizedBox(width: 8),
+            const Text(
+              'Python IDE',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
             ),
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Run project tests',
+            icon: const Icon(Icons.science_outlined, color: AppColors.green),
+            onPressed: _isRunnerReady && !_isRunning ? _runTests : null,
+          ),
           IconButton(
             tooltip: 'Templates',
             icon: const Icon(Icons.snippet_folder_outlined),
             onPressed: _openTemplates,
           ),
           IconButton(
-            tooltip: 'Supernova AI Debug',
-            icon: const Icon(Icons.auto_awesome_rounded, color: AppColors.orange),
-            onPressed: _askSupernova,
+            tooltip: 'Ask AI Python tutor',
+            icon: const Icon(
+              Icons.auto_awesome_rounded,
+              color: AppColors.orange,
+            ),
+            onPressed: _openAiTutor,
           ),
-          IconButton(
-            tooltip: 'Delete File',
-            icon: const Icon(Icons.delete_outline_rounded),
-            onPressed: _deleteCurrentFile,
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (val) {
+              if (val == 'delete') _deleteCurrentFile();
+            },
+            itemBuilder: (ctx) => const [
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.danger,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text('Delete file'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -403,21 +618,32 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
                         children: [
                           for (final file in _files.keys)
                             Padding(
-                              padding: const EdgeInsets.only(right: 6, top: 4, bottom: 4),
+                              padding: const EdgeInsets.only(
+                                right: 6,
+                                top: 4,
+                                bottom: 4,
+                              ),
                               child: ChoiceChip(
                                 label: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.description_outlined, size: 14),
+                                    const Icon(
+                                      Icons.description_outlined,
+                                      size: 14,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(file),
                                   ],
                                 ),
                                 selected: _activeFile == file,
                                 onSelected: (_) => _switchFile(file),
-                                selectedColor: AppColors.blue.withValues(alpha: 0.18),
+                                selectedColor: AppColors.blue.withValues(
+                                  alpha: 0.18,
+                                ),
                                 side: BorderSide(
-                                  color: _activeFile == file ? AppColors.blue : context.appBorder,
+                                  color: _activeFile == file
+                                      ? AppColors.blue
+                                      : context.appBorder,
                                 ),
                               ),
                             ),
@@ -476,7 +702,9 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
                             fontFamily: 'monospace',
                             fontSize: 14,
                             height: 1.57,
-                            color: dark ? const Color(0xFFF3F5FA) : const Color(0xFF1E243A),
+                            color: dark
+                                ? const Color(0xFFF3F5FA)
+                                : const Color(0xFF1E243A),
                           ),
                           decoration: const InputDecoration(
                             border: InputBorder.none,
@@ -523,7 +751,10 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
             ? const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : const Icon(Icons.play_arrow_rounded, size: 24),
         label: Text(
@@ -585,13 +816,18 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
             child: Material(
-              color: context.isDarkMode ? const Color(0xFF262A48) : const Color(0xFFE9ECF8),
+              color: context.isDarkMode
+                  ? const Color(0xFF262A48)
+                  : const Color(0xFFE9ECF8),
               borderRadius: BorderRadius.circular(8),
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
                 onTap: () => _insertSymbol(item.$2, cursorOffset: item.$3),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   child: Center(
                     child: Text(
                       item.$1,
@@ -630,7 +866,11 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
             color: dark ? const Color(0xFF12162A) : const Color(0xFF1E243A),
             child: Row(
               children: [
-                const Icon(Icons.terminal_rounded, size: 16, color: AppColors.blue),
+                const Icon(
+                  Icons.terminal_rounded,
+                  size: 16,
+                  color: AppColors.blue,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'TERMINAL OUTPUT',
@@ -654,7 +894,11 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
                 ],
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.clear_all_rounded, size: 18, color: Colors.white70),
+                  icon: const Icon(
+                    Icons.clear_all_rounded,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
                   tooltip: 'Clear Output',
                   onPressed: () => setState(() {
                     _stdout = null;
@@ -664,7 +908,9 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
                 ),
                 IconButton(
                   icon: Icon(
-                    _showConsole ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                    _showConsole
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
                     size: 20,
                     color: Colors.white70,
                   ),
@@ -726,107 +972,315 @@ class _PythonIdeScreenState extends State<PythonIdeScreen> {
   }
 }
 
-class _SupernovaAiSheet extends StatelessWidget {
-  const _SupernovaAiSheet({
+class _PythonAiSheet extends StatefulWidget {
+  const _PythonAiSheet({
     required this.learnerName,
     required this.code,
     this.error,
     this.stdout,
-    required this.onApplyFix,
   });
 
   final String learnerName;
   final String code;
   final String? error;
   final String? stdout;
-  final ValueChanged<String> onApplyFix;
+
+  @override
+  State<_PythonAiSheet> createState() => _PythonAiSheetState();
+}
+
+class _PythonAiSheetState extends State<_PythonAiSheet> {
+  final OnDeviceTutor _tutor = OnDeviceTutor();
+  final TextEditingController _input = TextEditingController();
+  final ScrollController _scroll = ScrollController();
+  final List<_IdeTutorMessage> _messages = [];
+  bool _preparing = false;
+  bool _sending = false;
+  double _downloadProgress = 0;
+
+  @override
+  void dispose() {
+    _input.dispose();
+    _scroll.dispose();
+    _tutor.close();
+    super.dispose();
+  }
+
+  Future<void> _prepareModel() async {
+    setState(() {
+      _preparing = true;
+      _downloadProgress = 0;
+    });
+    try {
+      await _tutor.prepare(
+        customInstructions:
+            'Teach Python step by step. Explain code clearly, help debug errors, and write focused tests when asked.',
+        onProgress: (value) {
+          if (mounted) setState(() => _downloadProgress = value);
+        },
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'On-device language model ready (${_tutor.selectedModel?.sizeLabel ?? 'downloaded'}).',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Model setup failed: $error')));
+    } finally {
+      if (mounted) setState(() => _preparing = false);
+    }
+  }
+
+  Future<void> _send([String? preset]) async {
+    final question = (preset ?? _input.text).trim();
+    if (question.isEmpty || _sending) return;
+    _input.clear();
+    final userPrompt =
+        '''$question
+
+Current editor file:
+```python
+${widget.code}
+```
+${widget.error?.trim().isNotEmpty == true ? 'Latest Python error:\n${widget.error}' : ''}
+${widget.stdout?.trim().isNotEmpty == true ? 'Latest program output:\n${widget.stdout}' : ''}''';
+    final history = _messages
+        .map(
+          (message) =>
+              '${message.isUser ? 'Learner' : 'Tutor'}: ${message.text}',
+        )
+        .toList(growable: false);
+    setState(() {
+      _sending = true;
+      _messages.add(_IdeTutorMessage(true, question));
+      _messages.add(_IdeTutorMessage(false, '', loading: true));
+    });
+    _scrollToBottom();
+    final response = StringBuffer();
+    try {
+      await for (final token in _tutor.ask(
+        question: userPrompt,
+        level: 1,
+        module: 'Python IDE',
+        unlockedConcepts: const [
+          'Python syntax',
+          'functions',
+          'lists',
+          'debugging',
+        ],
+        customInstructions:
+            'Teach like a patient Python instructor. Explain reasoning, point out risks, and give runnable examples. When asked for tests, provide unittest or pytest-style test code.',
+        recentConversation: history,
+        learnerName: widget.learnerName,
+        buddyName: 'Python Coach',
+      )) {
+        response.write(token);
+        if (!mounted) return;
+        setState(() {
+          _messages.last.text = response.toString();
+          _messages.last.loading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _messages.last.text = 'I could not complete that request: $error';
+          _messages.last.loading = false;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) {
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    const supernova = SupernovaEngine();
-    final analysis = supernova.generateResponse(
-      prompt: error != null && error!.isNotEmpty
-          ? 'Debug this error: $error'
-          : 'Analyze and optimize this code: $code',
-      userName: learnerName,
-      editorCode: code,
-      terminalOutput: error ?? stdout,
-    );
-
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: context.appBorder,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.orange, AppColors.violet],
+        padding: EdgeInsets.fromLTRB(18, 12, 18, 12 + bottomInset),
+        child: SizedBox(
+          height: (MediaQuery.sizeOf(context).height - bottomInset - 24)
+              .clamp(280.0, 680.0)
+              .toDouble(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: AppColors.violet,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'AI Python Tutor',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Supernova AI Copilot',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  if (!_tutor.isReady)
+                    TextButton.icon(
+                      onPressed: _preparing ? null : _prepareModel,
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: Text(
+                        _preparing
+                            ? '${(_downloadProgress * 100).round()}%'
+                            : 'Get model',
                       ),
-                      Text(
-                        'Live Code Diagnostics & Optimization',
-                        style: TextStyle(color: context.appMuted, fontSize: 12),
-                      ),
-                    ],
-                  ),
+                    )
+                  else
+                    const Chip(label: Text('On-device model')),
+                ],
+              ),
+              Text(
+                _tutor.isReady
+                    ? 'Q&A, code explanations, debugging, and test ideas powered by the local language model.'
+                    : 'Ask a question now. Download the optional local model for open-ended AI answers.',
+                style: TextStyle(color: context.appMuted, fontSize: 12),
+              ),
+              if (_preparing) ...[
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: _downloadProgress > 0 ? _downloadProgress : null,
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 380),
-              child: SingleChildScrollView(
-                child: Text(
-                  analysis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: context.appText,
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                children: [
+                  _TutorActionChip(
+                    'Explain code',
+                    onTap: () => _send('Explain this code line by line.'),
                   ),
-                ),
+                  _TutorActionChip(
+                    'Find bugs',
+                    onTap: () => _send(
+                      'Review this code for bugs and explain how to fix them.',
+                    ),
+                  ),
+                  _TutorActionChip(
+                    'Write tests',
+                    onTap: () => _send(
+                      'Write a small set of Python unit tests for this code.',
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text('Got it, thanks Supernova!'),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _messages.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Ask about Python, this file, the last run, or how to test your code.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: context.appMuted),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scroll,
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final message = _messages[index];
+                          return Align(
+                            alignment: message.isUser
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 5),
+                              padding: const EdgeInsets.all(11),
+                              constraints: const BoxConstraints(maxWidth: 360),
+                              decoration: BoxDecoration(
+                                color: message.isUser
+                                    ? AppColors.blue.withValues(alpha: .14)
+                                    : context.appSurface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.appBorder),
+                              ),
+                              child: message.loading && message.text.isEmpty
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : SelectableText(
+                                      message.text,
+                                      style: TextStyle(
+                                        color: context.appText,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
               ),
-            ),
-          ],
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _input,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
+                      decoration: const InputDecoration(
+                        hintText: 'Ask a Python question…',
+                      ),
+                    ),
+                  ),
+                  IconButton.filled(
+                    onPressed: _sending ? null : _send,
+                    icon: const Icon(Icons.send_rounded),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _IdeTutorMessage {
+  _IdeTutorMessage(this.isUser, this.text, {this.loading = false});
+
+  final bool isUser;
+  String text;
+  bool loading;
+}
+
+class _TutorActionChip extends StatelessWidget {
+  const _TutorActionChip(this.label, {required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) =>
+      ActionChip(label: Text(label), onPressed: onTap);
 }

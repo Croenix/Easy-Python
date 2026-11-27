@@ -18,6 +18,40 @@
       }
     }
 
+    function completeRun(result) {
+      const active = pending;
+      if (active && active.id === result.id) {
+        clearTimeout(active.timer);
+        pending = null;
+        active.resolve(result);
+      }
+      sendToFlutter(result);
+    }
+
+    function timeOutRun(id, limit) {
+      const active = pending && pending.id === id ? pending : null;
+      const result = {
+        id,
+        type: 'result',
+        stdout: '',
+        stderr: '',
+        timedOut: true,
+        error: `Execution timed out after ${Math.ceil(limit / 1000)} seconds.`,
+      };
+      if (active) {
+        clearTimeout(active.timer);
+        pending = null;
+        active.resolve(result);
+      }
+      if (worker) {
+        worker.terminate();
+        worker = null;
+        ready = false;
+      }
+      sendToFlutter(result);
+      if (!worker && !pyodideDirect) startWorker();
+    }
+
     const blockedModules = [
       'os', 'sys', 'subprocess', 'socket', 'pathlib', 'open', 'io', 'builtins',
       'importlib', 'urllib', 'http', 'requests', 'js', 'pyodide', 'webbrowser',
@@ -43,23 +77,46 @@
       }
     }
 
-    async function runDirect(id, source, inputs) {
-      if (typeof source !== 'string' || source.length > 65536) {
+    async function runDirect(id, source, inputs, files = {}) {
+      const projectSize = Object.values(files).reduce((size, value) => size + String(value).length, 0);
+      if (typeof source !== 'string' || source.length > 65536 || projectSize > 262144) {
         return {id, type: 'result', stdout: '', stderr: '', error: 'Code is too long.'};
       }
       pyodideDirect.globals.set('__easy_source', source);
       pyodideDirect.globals.set('__easy_inputs', pyodideDirect.toPy(Array.isArray(inputs) ? inputs.slice(0, 32) : []));
+      pyodideDirect.globals.set('__easy_files', pyodideDirect.toPy(files));
       const runner = `
-import ast, builtins, contextlib, io
+import ast, builtins, contextlib, io, re, types
 
 class _EasyBlockedOperation(Exception):
     pass
 
 _easy_original_import = builtins.__import__
 _easy_blocked = set(${JSON.stringify(blockedModules)})
+_easy_project_files = {}
+for _easy_filename, _easy_contents in dict(__easy_files).items():
+    if isinstance(_easy_filename, str) and _easy_filename.endswith('.py') and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*\.py', _easy_filename):
+        _easy_project_files[_easy_filename[:-3]] = str(_easy_contents)
+_easy_project_modules = {}
+
+def _easy_load_project_module(name):
+    if name in _easy_project_modules:
+        return _easy_project_modules[name]
+    _easy_module = types.ModuleType(name)
+    _easy_module.__file__ = name + '.py'
+    _easy_project_modules[name] = _easy_module
+    _easy_module.__dict__['__builtins__'] = _easy_builtins
+    _easy_module_tree = ast.parse(_easy_project_files[name], filename=name + '.py', mode='exec')
+    _easy_validate_tree(_easy_module_tree)
+    exec(compile(_easy_module_tree, name + '.py', 'exec'), _easy_module.__dict__, _easy_module.__dict__)
+    return _easy_module
+
 def _easy_import(name, globals=None, locals=None, fromlist=(), level=0):
-    if name.split('.')[0] in _easy_blocked:
+    root_name = name.split('.')[0]
+    if root_name in _easy_blocked:
         raise ImportError('This module is not available in the learning runner.')
+    if level == 0 and name in _easy_project_files:
+        return _easy_load_project_module(name)
     return _easy_original_import(name, globals, locals, fromlist, level)
 
 def _easy_no_files(*args, **kwargs):
@@ -69,16 +126,17 @@ _easy_builtins = dict(vars(builtins))
 _easy_builtins.pop('open', None)
 _easy_builtins['__import__'] = _easy_import
 _easy_input_values = list(__easy_inputs)
+_easy_output = io.StringIO()
 def _easy_input(prompt=''):
+    if prompt:
+        _easy_output.write(str(prompt))
     if not _easy_input_values:
         raise EOFError('No more sample input was provided.')
     return str(_easy_input_values.pop(0))
 _easy_builtins['input'] = _easy_input
 
-_easy_output = io.StringIO()
-try:
-    _easy_tree = ast.parse(__easy_source, mode='exec')
-    for _easy_node in ast.walk(_easy_tree):
+def _easy_validate_tree(tree):
+    for _easy_node in ast.walk(tree):
         if isinstance(_easy_node, (ast.Import, ast.ImportFrom)):
             _easy_names = [alias.name.split('.')[0] for alias in _easy_node.names] if isinstance(_easy_node, ast.Import) else [_easy_node.module.split('.')[0] if _easy_node.module else '']
             if any(name in _easy_blocked for name in _easy_names):
@@ -86,6 +144,10 @@ try:
         if isinstance(_easy_node, ast.Call) and isinstance(_easy_node.func, ast.Name) and _easy_node.func.id in ('open', 'eval', 'exec', 'compile'):
             if _easy_node.func.id != 'exec':
                 raise PermissionError('This operation is disabled in the learning runner.')
+
+try:
+    _easy_tree = ast.parse(__easy_source, mode='exec')
+    _easy_validate_tree(_easy_tree)
     _easy_namespace = {'__builtins__': _easy_builtins}
     with contextlib.redirect_stdout(_easy_output):
         exec(__easy_source, _easy_namespace)
@@ -93,7 +155,10 @@ try:
     _easy_error = ''
 except Exception as e:
     _easy_stdout = _easy_output.getvalue()
-    _easy_error = f"{type(e).__name__}: {e}"
+    _easy_error_detail = str(e).strip()
+    if not _easy_error_detail:
+        _easy_error_detail = 'Assertion failed.' if type(e).__name__ == 'AssertionError' else 'No additional error details.'
+    _easy_error = f"{type(e).__name__}: {_easy_error_detail}"
 finally:
     _easy_output.close()
 `;
@@ -118,10 +183,14 @@ finally:
             sendToFlutter({type: 'ready'});
             return;
           }
+          if (result.type === 'workerError') {
+            worker?.terminate();
+            worker = null;
+            initializeDirect();
+            return;
+          }
           if (result.type === 'result' && pending && result.id === pending.id) {
-            clearTimeout(pending.timer);
-            pending.resolve(result);
-            pending = null;
+            completeRun(result);
             return;
           }
           sendToFlutter(result);
@@ -137,23 +206,25 @@ finally:
       }
     }
 
-    window.runPython = (id, source, inputs) => new Promise((resolve) => {
+    window.runPython = (id, source, inputs, files, timeoutMs) => new Promise((resolve) => {
       if (!ready || pending) {
-        resolve({id, type: 'result', stderr: '', error: 'Python runtime is still preparing.'});
+        const result = {id, type: 'result', stdout: '', stderr: '', error: 'Python runtime is still preparing.'};
+        resolve(result);
+        sendToFlutter(result);
         return;
       }
-      if (!worker) {
-        runDirect(id, source, inputs).then(resolve);
-        return;
-      }
-      const timer = setTimeout(() => {
-        worker.terminate();
-        pending = null;
-        resolve({id, type: 'result', stdout: '', stderr: '', timedOut: true});
-        startWorker();
-      }, 3000);
+      const limit = (typeof timeoutMs === 'number' && timeoutMs > 0) ? timeoutMs : 15000;
+      const timer = setTimeout(() => timeOutRun(id, limit), limit);
       pending = {id, resolve, timer};
-      worker.postMessage({id, source, inputs});
+      if (!worker) {
+        runDirect(id, source, inputs, files).then(completeRun);
+        return;
+      }
+      try {
+        worker.postMessage({id, source, inputs, files});
+      } catch (error) {
+        completeRun({id, type: 'result', stdout: '', stderr: '', error: String(error)});
+      }
     });
 
     startWorker();

@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pypath/answer_evaluator.dart';
 import 'package:pypath/content_pack.dart';
-import 'package:pypath/supernova_ai.dart';
+import 'package:pypath/python_teaching_mode.dart';
 
 void main() {
-  const supernova = SupernovaEngine();
+  const teachingMode = PythonTeachingMode();
 
-  group('SupernovaEngine - Practical Submission Diagnostics', () {
+  group('PythonTeachingMode - Practical Submission Diagnostics', () {
     test('analyzes multiple choice question correctly', () {
       const item = PracticalItem(
         id: 'q1',
@@ -16,7 +16,7 @@ void main() {
         options: ['def', 'fun', 'function', 'define'],
       );
 
-      final pass = supernova.analyzeSubmission(
+      final pass = teachingMode.analyzeSubmission(
         question: item,
         userResponse: 'def',
         userName: 'Achu',
@@ -24,7 +24,7 @@ void main() {
       expect(pass.isCorrect, isTrue);
       expect(pass.headline, contains('Achu'));
 
-      final fail = supernova.analyzeSubmission(
+      final fail = teachingMode.analyzeSubmission(
         question: item,
         userResponse: 'fun',
         userName: 'Achu',
@@ -43,7 +43,7 @@ void main() {
         ],
       );
 
-      final analysis = supernova.analyzeSubmission(
+      final analysis = teachingMode.analyzeSubmission(
         question: item,
         userResponse: 'def hello()\n    print("hi")',
         userName: 'Achu',
@@ -65,7 +65,7 @@ void main() {
         prompt: 'Print score and age.',
       );
 
-      final analysis = supernova.analyzeSubmission(
+      final analysis = teachingMode.analyzeSubmission(
         question: item,
         userResponse: 'print("Score: " + 10)',
         userName: 'Achu',
@@ -80,34 +80,35 @@ void main() {
       expect(analysis.explanation, contains('Convert numbers using `str()`'));
     });
 
-    test('diagnoses tuple vs list misconception when output is empty/wrong', () {
-      const item = PracticalItem(
-        id: 'q4',
-        type: 'code',
-        prompt: 'Create a list of fruits and print it.',
-        tests: [
-          {'stdout': "['apple', 'banana']\n"},
-        ],
-      );
+    test(
+      'diagnoses tuple vs list misconception when output is empty/wrong',
+      () {
+        const item = PracticalItem(
+          id: 'q4',
+          type: 'code',
+          prompt: 'Create a list of fruits and print it.',
+          tests: [
+            {'stdout': "['apple', 'banana']\n"},
+          ],
+        );
 
-      final analysis = supernova.analyzeSubmission(
-        question: item,
-        userResponse: 'fruits = ("apple", "banana")\nprint(fruits)',
-        userName: 'Achu',
-        runResult: const CodeRunResult(
-          stdout: "('apple', 'banana')",
-        ),
-      );
+        final analysis = teachingMode.analyzeSubmission(
+          question: item,
+          userResponse: 'fruits = ("apple", "banana")\nprint(fruits)',
+          userName: 'Achu',
+          runResult: const CodeRunResult(stdout: "('apple', 'banana')"),
+        );
 
-      expect(analysis.isCorrect, isFalse);
-      expect(analysis.explanation, contains('Tuple'));
-      expect(analysis.cosmicTip, contains('square brackets'));
-    });
+        expect(analysis.isCorrect, isFalse);
+        expect(analysis.explanation, contains('Tuple'));
+        expect(analysis.tip, contains('square brackets'));
+      },
+    );
   });
 
-  group('SupernovaEngine - Conversational AI & Streaming', () {
+  group('PythonTeachingMode - Conversational Teaching & Streaming', () {
     test('generates topic explanation for decorators', () {
-      final reply = supernova.generateResponse(
+      final reply = teachingMode.generateResponse(
         prompt: 'Can you explain decorators?',
         userName: 'Achu',
       );
@@ -117,7 +118,7 @@ void main() {
 
     test('streams chat tokens smoothly', () async {
       final chunks = <String>[];
-      await for (final token in supernova.streamChat(
+      await for (final token in teachingMode.streamChat(
         prompt: 'What is the difference between list and tuple?',
         userName: 'Achu',
       )) {

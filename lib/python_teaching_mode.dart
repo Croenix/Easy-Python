@@ -2,14 +2,14 @@ import 'dart:async';
 import 'content_pack.dart';
 import 'answer_evaluator.dart';
 
-/// Detailed result of Supernova AI analyzing a learner's code or question.
-class SupernovaAnalysis {
-  const SupernovaAnalysis({
+/// Result produced by the built-in, rule-based Python teaching mode.
+class TeachingFeedback {
+  const TeachingFeedback({
     required this.isCorrect,
     required this.headline,
     required this.explanation,
     this.suggestedCode,
-    this.cosmicTip,
+    this.tip,
     this.detectedError,
   });
 
@@ -17,16 +17,18 @@ class SupernovaAnalysis {
   final String headline;
   final String explanation;
   final String? suggestedCode;
-  final String? cosmicTip;
+  final String? tip;
   final String? detectedError;
 }
 
-/// The core Supernova AI engine for Python analysis, debugging, and tutoring.
-class SupernovaEngine {
-  const SupernovaEngine();
+/// Rule-based teaching support for Python practice and code diagnostics.
+/// This is application logic, not a generative AI model. Optional model
+/// inference is provided separately by the on-device tutor runtime.
+class PythonTeachingMode {
+  const PythonTeachingMode();
 
   /// Analyzes a practical answer or code submission with detailed diagnostics.
-  SupernovaAnalysis analyzeSubmission({
+  TeachingFeedback analyzeSubmission({
     required PracticalItem question,
     required String userResponse,
     required String userName,
@@ -42,20 +44,24 @@ class SupernovaEngine {
       final correct = expected == actual;
 
       if (correct) {
-        return SupernovaAnalysis(
+        return TeachingFeedback(
           isCorrect: true,
           headline: 'Spot on, $cleanName! 🌟',
-          explanation: question.aiExplanation ??
+          explanation:
+              question.aiExplanation ??
               'Great work! You correctly identified the right concept for this scenario.',
-          cosmicTip: 'Building rock-solid fundamentals makes advanced Python intuitive.',
+          tip:
+              'Building rock-solid fundamentals makes advanced Python intuitive.',
         );
       } else {
-        return SupernovaAnalysis(
+        return TeachingFeedback(
           isCorrect: false,
           headline: 'Not quite, $cleanName — let’s break it down! 💡',
-          explanation: question.aiExplanation ??
+          explanation:
+              question.aiExplanation ??
               'Review the question carefully. Think about how Python evaluates this condition or data structure.',
-          cosmicTip: 'Remember: Python syntax prioritizes readability and clear intent.',
+          tip:
+              'Remember: Python syntax prioritizes readability and clear intent.',
         );
       }
     }
@@ -68,8 +74,8 @@ class SupernovaEngine {
           .map((k) => k.toLowerCase())
           .toList();
 
-      final hasKeywords = keywords.isEmpty ||
-          keywords.every((kw) => actual.contains(kw));
+      final hasKeywords =
+          keywords.isEmpty || keywords.every((kw) => actual.contains(kw));
       final wordsExpected = expected.split(RegExp(r'\s+')).toSet();
       final wordsActual = actual.split(RegExp(r'\s+')).toSet();
       final overlap = wordsExpected.intersection(wordsActual).length;
@@ -77,26 +83,31 @@ class SupernovaEngine {
           ? 1.0
           : overlap / wordsExpected.length;
 
-      final isCorrect = (similarity >= 0.5 || actual == expected) && hasKeywords;
+      final isCorrect =
+          (similarity >= 0.5 || actual == expected) && hasKeywords;
 
       if (isCorrect) {
-        return SupernovaAnalysis(
+        return TeachingFeedback(
           isCorrect: true,
           headline: 'Excellent answer, $cleanName! 🚀',
-          explanation: question.aiExplanation ??
+          explanation:
+              question.aiExplanation ??
               'You captured the core Python concept accurately.',
-          cosmicTip: 'Being able to explain code in plain English is the hallmark of a true Pythonista.',
+          tip:
+              'Being able to explain code in plain English is the hallmark of a true Pythonista.',
         );
       } else {
         final missing = keywords.where((kw) => !actual.contains(kw)).toList();
         final hint = missing.isNotEmpty
             ? 'Make sure to mention "${missing.join('", "')}".'
             : 'Try focusing on the main purpose explained in the lesson.';
-        return SupernovaAnalysis(
+        return TeachingFeedback(
           isCorrect: false,
           headline: 'Almost there, $cleanName! 🔍',
           explanation: 'Your explanation is missing a key detail. $hint',
-          cosmicTip: question.aiExplanation ?? 'Precision in terminology helps when reading official Python docs.',
+          tip:
+              question.aiExplanation ??
+              'Precision in terminology helps when reading official Python docs.',
         );
       }
     }
@@ -104,20 +115,23 @@ class SupernovaEngine {
     // 3. Code & Fix-The-Bug Analysis
     if (question.type == 'code' || question.type == 'fixTheBug') {
       if (runResult == null) {
-        return SupernovaAnalysis(
+        return TeachingFeedback(
           isCorrect: false,
           headline: 'Awaiting execution, $cleanName! ⏳',
-          explanation: 'Tap "Run and check" to execute your Python code in our offline engine.',
+          explanation:
+              'Tap "Run and check" to execute your Python code in our offline engine.',
         );
       }
 
       // Check for syntax or runtime errors
       if (runResult.timedOut) {
-        return SupernovaAnalysis(
+        return TeachingFeedback(
           isCorrect: false,
           headline: 'Execution Timed Out! ⏱️',
-          explanation: 'Your code took too long to run. Check for infinite loops (like `while True:` without a break condition).',
-          cosmicTip: 'Ensure every loop has a clear progression towards its exit condition.',
+          explanation:
+              'Your code took too long to run. Check for infinite loops (like `while True:` without a break condition).',
+          tip:
+              'Ensure every loop has a clear progression towards its exit condition.',
         );
       }
 
@@ -140,11 +154,13 @@ class SupernovaEngine {
       final actualStdout = runResult.stdout.trim();
 
       if (_normalizeOutput(expectedStdout) == _normalizeOutput(actualStdout)) {
-        return SupernovaAnalysis(
+        return TeachingFeedback(
           isCorrect: true,
           headline: 'Brilliant work, $cleanName! Code executed flawlessly! 🎉',
-          explanation: 'Your code produced the exact expected output:\n```\n$actualStdout\n```',
-          cosmicTip: 'Writing clean code that passes tests on the first try is fantastic discipline.',
+          explanation:
+              'Your code produced the exact expected output:\n```\n$actualStdout\n```',
+          tip:
+              'Writing clean code that passes tests on the first try is fantastic discipline.',
         );
       } else {
         return _diagnoseMismatch(
@@ -157,15 +173,15 @@ class SupernovaEngine {
       }
     }
 
-    return SupernovaAnalysis(
+    return TeachingFeedback(
       isCorrect: false,
       headline: 'Review needed, $cleanName',
       explanation: 'Please check your submission and try again.',
     );
   }
 
-  /// Diagnoses Python syntax and runtime errors with helpful Supernova advice.
-  SupernovaAnalysis _diagnosePythonError({
+  /// Diagnoses Python syntax and runtime errors with beginner-friendly advice.
+  TeachingFeedback _diagnosePythonError({
     required String code,
     required String error,
     required String userName,
@@ -179,60 +195,81 @@ class SupernovaEngine {
     if (error.contains('SyntaxError')) {
       headline = 'Syntax Alert, $userName! ⚠️';
       if (code.contains('def ') && !code.contains(':')) {
-        explanation = 'You declared a function with `def`, but forgot the trailing colon `:` at the end of the line.';
-        tip = 'In Python, header statements (`def`, `if`, `for`, `while`, `class`) always end with a colon `:`.';
+        explanation =
+            'You declared a function with `def`, but forgot the trailing colon `:` at the end of the line.';
+        tip =
+            'In Python, header statements (`def`, `if`, `for`, `while`, `class`) always end with a colon `:`.';
       } else if (code.contains('if ') && !code.contains(':')) {
-        explanation = 'Your `if` statement is missing a colon `:` at the end of the condition.';
+        explanation =
+            'Your `if` statement is missing a colon `:` at the end of the condition.';
         tip = 'Conditionals in Python must end with `:`.';
       } else if (code.contains('for ') && !code.contains(':')) {
-        explanation = 'Your `for` loop statement needs a colon `:` before the indented block.';
-      } else if (code.contains('=') && !code.contains('==') && (code.contains('if ') || code.contains('elif '))) {
-        explanation = 'You used a single `=` inside a condition. In Python, `=` assigns a variable, while `==` checks for equality.';
+        explanation =
+            'Your `for` loop statement needs a colon `:` before the indented block.';
+      } else if (code.contains('=') &&
+          !code.contains('==') &&
+          (code.contains('if ') || code.contains('elif '))) {
+        explanation =
+            'You used a single `=` inside a condition. In Python, `=` assigns a variable, while `==` checks for equality.';
         tip = 'Use `x == y` to compare values in `if` checks.';
       } else {
-        explanation = 'Python encountered a SyntaxError. Check for missing parentheses, quotes, or colons on lines leading up to the error.';
+        explanation =
+            'Python encountered a SyntaxError. Check for missing parentheses, quotes, or colons on lines leading up to the error.';
       }
     } else if (error.contains('IndentationError')) {
       headline = 'Indentation Needs Attention, $userName! 📐';
-      explanation = 'Python relies strictly on indentation to structure code blocks. Make sure statements inside functions, loops, or `if` blocks are indented with 4 spaces.';
-      tip = 'Avoid mixing tabs and spaces; standard PEP 8 uses 4 spaces per indent level.';
+      explanation =
+          'Python relies strictly on indentation to structure code blocks. Make sure statements inside functions, loops, or `if` blocks are indented with 4 spaces.';
+      tip =
+          'Avoid mixing tabs and spaces; standard PEP 8 uses 4 spaces per indent level.';
     } else if (error.contains('NameError')) {
       final match = RegExp(r"name '(\w+)' is not defined").firstMatch(error);
       final varName = match != null ? match.group(1) : 'a variable';
       headline = 'Undefined Name: $varName 🔍';
-      explanation = 'Python cannot find `$varName`. Make sure it was created before this line, and check for typos or capitalization (Python is case-sensitive: `age` is different from `Age`).';
+      explanation =
+          'Python cannot find `$varName`. Make sure it was created before this line, and check for typos or capitalization (Python is case-sensitive: `age` is different from `Age`).';
     } else if (error.contains('TypeError')) {
-      if (error.contains('can only concatenate str') || error.contains('unsupported operand type')) {
+      if (error.contains('can only concatenate str') ||
+          error.contains('unsupported operand type')) {
         headline = 'Type Mismatch, $userName! 🧩';
-        explanation = 'You tried to combine different data types (like adding a string and an integer directly). Convert numbers using `str()` or use an f-string: `f"Result: {val}"`.';
-        tip = 'Python does not automatically coerce integers to strings in concatenation.';
+        explanation =
+            'You tried to combine different data types (like adding a string and an integer directly). Convert numbers using `str()` or use an f-string: `f"Result: {val}"`.';
+        tip =
+            'Python does not automatically coerce integers to strings in concatenation.';
       } else {
         headline = 'TypeError Detected! 🧩';
-        explanation = 'A function or operator was called with an unexpected data type. Review the values being passed.';
+        explanation =
+            'A function or operator was called with an unexpected data type. Review the values being passed.';
       }
     } else if (error.contains('IndexError')) {
       headline = 'Index Out of Range! 📏';
-      explanation = 'You tried to access an element past the end of a list or string. Remember that Python uses 0-based indexing: a list with 3 items has indices 0, 1, and 2.';
-      tip = 'Use `len(my_list)` to verify how many elements exist before indexing.';
+      explanation =
+          'You tried to access an element past the end of a list or string. Remember that Python uses 0-based indexing: a list with 3 items has indices 0, 1, and 2.';
+      tip =
+          'Use `len(my_list)` to verify how many elements exist before indexing.';
     } else if (error.contains('ZeroDivisionError')) {
       headline = 'Division by Zero! ⚡';
-      explanation = 'You divided a number by zero. Ensure your divisor variable is checked before performing division.';
+      explanation =
+          'You divided a number by zero. Ensure your divisor variable is checked before performing division.';
     } else {
-      explanation = 'Python reported the following issue during execution:\n`$error`\nReview the line indicated in the traceback.';
+      explanation =
+          'Python reported the following issue during execution:\n`$error`\nReview the line indicated in the traceback.';
     }
 
-    return SupernovaAnalysis(
+    return TeachingFeedback(
       isCorrect: false,
       headline: headline,
       explanation: explanation,
       suggestedCode: suggestedCode,
-      cosmicTip: tip ?? 'Supernova AI Pro-Tip: Read Python tracebacks from bottom to top to identify the root cause.',
+      tip:
+          tip ??
+          'Python tip: Read tracebacks from bottom to top to identify the root cause.',
       detectedError: error,
     );
   }
 
   /// Diagnoses output mismatches when code runs without crashing but output differs.
-  SupernovaAnalysis _diagnoseMismatch({
+  TeachingFeedback _diagnoseMismatch({
     required String code,
     required String actual,
     required String expected,
@@ -240,29 +277,38 @@ class SupernovaEngine {
     PracticalItem? question,
   }) {
     String headline = 'Close, $userName! Check the output 🎯';
-    String explanation = 'Your code ran cleanly, but the output did not match what the challenge expects.\n\n'
+    String explanation =
+        'Your code ran cleanly, but the output did not match what the challenge expects.\n\n'
         '• **Your Output:** `${actual.isEmpty ? "(empty / no output)" : actual}`\n'
         '• **Expected:** `$expected`';
 
-    String tip = 'Check whether extra spaces, uppercase letters, or formatting differed.';
+    String tip =
+        'Check whether extra spaces, uppercase letters, or formatting differed.';
 
     // Common scenario: user created a tuple instead of list
-    if (code.contains('(') && code.contains(')') && !code.contains('[') && (question?.prompt.toLowerCase().contains('list') ?? false)) {
-      explanation += '\n\n💡 *Notice:* Parentheses `()` create an immutable **Tuple**, whereas square brackets `[]` create a **List**.';
-      tip = 'Use square brackets `[item1, item2, ...]` to define a Python list.';
+    if (code.contains('(') &&
+        code.contains(')') &&
+        !code.contains('[') &&
+        (question?.prompt.toLowerCase().contains('list') ?? false)) {
+      explanation +=
+          '\n\n💡 *Notice:* Parentheses `()` create an immutable **Tuple**, whereas square brackets `[]` create a **List**.';
+      tip =
+          'Use square brackets `[item1, item2, ...]` to define a Python list.';
     }
 
     // Common scenario: missing print statement
     if (actual.isEmpty && !code.contains('print(')) {
-      explanation += '\n\n💡 *Notice:* You calculated or defined the result, but didn\'t print it. Call `print(...)` to display the output.';
-      tip = 'In Python scripts, use `print(variable)` to output results to the console.';
+      explanation +=
+          '\n\n💡 *Notice:* You calculated or defined the result, but didn\'t print it. Call `print(...)` to display the output.';
+      tip =
+          'In Python scripts, use `print(variable)` to output results to the console.';
     }
 
-    return SupernovaAnalysis(
+    return TeachingFeedback(
       isCorrect: false,
       headline: headline,
       explanation: explanation,
-      cosmicTip: tip,
+      tip: tip,
     );
   }
 
@@ -277,7 +323,7 @@ class SupernovaEngine {
         .toLowerCase();
   }
 
-  /// Real-time streaming response generator for conversational Supernova AI chat.
+  /// Streams a response from the built-in Python teaching mode.
   Stream<String> streamChat({
     required String prompt,
     required String userName,
@@ -307,7 +353,7 @@ class SupernovaEngine {
     }
   }
 
-  /// Generates comprehensive, high-quality Supernova AI response.
+  /// Generates a teaching response from built-in rules and lesson hints.
   String generateResponse({
     required String prompt,
     required String userName,
@@ -321,7 +367,11 @@ class SupernovaEngine {
 
     // Check if debugging IDE code
     if ((editorCode != null && editorCode.trim().isNotEmpty) &&
-        (pLower.contains('debug') || pLower.contains('fix') || pLower.contains('error') || pLower.contains('check my code') || (terminalOutput != null && terminalOutput.contains('Error')))) {
+        (pLower.contains('debug') ||
+            pLower.contains('fix') ||
+            pLower.contains('error') ||
+            pLower.contains('check my code') ||
+            (terminalOutput != null && terminalOutput.contains('Error')))) {
       return _generateCodeDebugResponse(
         userName: name,
         code: editorCode,
@@ -332,7 +382,7 @@ class SupernovaEngine {
 
     // Check for specific topics & concepts
     if (pLower.contains('list') && pLower.contains('tuple')) {
-      return 'Hey $name! Here is the cosmic distinction between **Lists** and **Tuples**:\n\n'
+      return 'Hey $name! Here is the key distinction between **Lists** and **Tuples**:\n\n'
           '1. **Lists `[ ]` (Mutable):**\n'
           '   - You can add, remove, and change items after creation.\n'
           '   - Syntax: `fruits = ["apple", "banana"]`\n'
@@ -341,7 +391,7 @@ class SupernovaEngine {
           '   - Locked upon creation; cannot be modified or resized.\n'
           '   - Syntax: `coordinates = (10, 20)`\n'
           '   - Great for fixed data, dictionary keys, and memory efficiency.\n\n'
-          '💡 **Supernova Mental Model:** Use lists for collections of things that change; use tuples for records whose shape never changes!';
+          '💡 **Mental model:** Use lists for collections of things that change; use tuples for records whose shape never changes!';
     }
 
     if (pLower.contains('decorator') || pLower.contains('@')) {
@@ -383,7 +433,7 @@ class SupernovaEngine {
           'squares = []\n'
           'for x in range(5):\n'
           '    squares.append(x ** 2)\n\n'
-          '# Supernova List Comprehension way:\n'
+          '# List comprehension:\n'
           'squares = [x ** 2 for x in range(5)]\n'
           '# Output: [0, 1, 4, 9, 16]\n'
           '```\n'
@@ -392,7 +442,7 @@ class SupernovaEngine {
 
     if (pLower.contains('hint') || pLower.contains('give me a hint')) {
       final topic = currentTopic ?? 'the current Python concept';
-      return 'Hey $name! Here is your Supernova hint for **$topic**:\n\n'
+      return 'Hey $name! Here is a hint for **$topic**:\n\n'
           '• Break the problem down into 3 simple steps: **Input**, **Process**, and **Output**.\n'
           '• Write out the logic in plain comments first using `#`.\n'
           '• Test with one simple value before writing loops or complex conditions.\n\n'
@@ -400,7 +450,7 @@ class SupernovaEngine {
     }
 
     if (pLower.contains('practice idea') || pLower.contains('challenge')) {
-      return 'Hey $name! Ready for a fast Supernova Micro-Challenge? 🚀\n\n'
+      return 'Hey $name! Ready for a short Python challenge? 🚀\n\n'
           '**Mission:** Write a 4-line script that:\n'
           '1. Asks the user for their favorite Python feature.\n'
           '2. Stores it in a variable.\n'
@@ -408,9 +458,11 @@ class SupernovaEngine {
           'Switch over to the **IDE tab** to write it and run it right now!';
     }
 
-    if (pLower.contains('explain') || pLower.contains('simply') || pLower.contains('what is')) {
+    if (pLower.contains('explain') ||
+        pLower.contains('simply') ||
+        pLower.contains('what is')) {
       final topic = currentTopic ?? 'Python';
-      return 'Hey $name! Let’s break down **$topic** with the Supernova simplicity principle:\n\n'
+      return 'Hey $name! Let’s break down **$topic** one step at a time:\n\n'
           'Every Python program is built on instructions that direct how data flows:\n'
           '1. **Store data:** Variables (`x = 10`, `name = "$name"`)\n'
           '2. **Make decisions:** Conditions (`if`, `elif`, `else`)\n'
@@ -420,8 +472,10 @@ class SupernovaEngine {
     }
 
     // Default friendly and knowledgeable response
-    final topicContext = currentTopic != null ? ' in relation to **$currentTopic**' : '';
-    return 'Hey $name! I’m **Supernova AI**, your personal Python mentor. 🌟\n\n'
+    final topicContext = currentTopic != null
+        ? ' in relation to **$currentTopic**'
+        : '';
+    return 'Hey $name! I’m your Python learning coach. 🌟\n\n'
         'Regarding your question$topicContext:\n\n'
         'Python is designed around clarity and readability. When working through this:\n'
         '• Check your variable types with `type(var)`.\n'
@@ -438,7 +492,9 @@ class SupernovaEngine {
     required String userQuery,
   }) {
     final buffer = StringBuffer();
-    buffer.writeln('Hey $userName! I analyzed your Python code and execution output:\n');
+    buffer.writeln(
+      'Hey $userName! I analyzed your Python code and execution output:\n',
+    );
 
     final lines = code.split('\n');
     var foundIssue = false;
@@ -446,9 +502,20 @@ class SupernovaEngine {
     // Check missing colons
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
-      if ((line.startsWith('def ') || line.startsWith('if ') || line.startsWith('elif ') || line.startsWith('else') || line.startsWith('for ') || line.startsWith('while ') || line.startsWith('class ')) && !line.endsWith(':')) {
-        buffer.writeln('🔍 **Line ${i + 1} Issue:** Missing colon `:` at end of statement:');
-        buffer.writeln('```python\n${lines[i]} : # <-- Missing colon here\n```\n');
+      if ((line.startsWith('def ') ||
+              line.startsWith('if ') ||
+              line.startsWith('elif ') ||
+              line.startsWith('else') ||
+              line.startsWith('for ') ||
+              line.startsWith('while ') ||
+              line.startsWith('class ')) &&
+          !line.endsWith(':')) {
+        buffer.writeln(
+          '🔍 **Line ${i + 1} Issue:** Missing colon `:` at end of statement:',
+        );
+        buffer.writeln(
+          '```python\n${lines[i]} : # <-- Missing colon here\n```\n',
+        );
         foundIssue = true;
       }
     }
@@ -456,8 +523,15 @@ class SupernovaEngine {
     // Check single '=' in if statement
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
-      if ((line.startsWith('if ') || line.startsWith('elif ')) && line.contains('=') && !line.contains('==') && !line.contains('!=') && !line.contains('<=') && !line.contains('>=')) {
-        buffer.writeln('🔍 **Line ${i + 1} Issue:** Assignment operator `=` used instead of equality check `==`:');
+      if ((line.startsWith('if ') || line.startsWith('elif ')) &&
+          line.contains('=') &&
+          !line.contains('==') &&
+          !line.contains('!=') &&
+          !line.contains('<=') &&
+          !line.contains('>=')) {
+        buffer.writeln(
+          '🔍 **Line ${i + 1} Issue:** Assignment operator `=` used instead of equality check `==`:',
+        );
         buffer.writeln('Change `=` to `==` for comparison in conditionals.\n');
         foundIssue = true;
       }
@@ -466,12 +540,18 @@ class SupernovaEngine {
     if (error != null && error.trim().isNotEmpty) {
       buffer.writeln('⚠️ **Runtime Diagnostics:**');
       buffer.writeln('```\n${error.trim()}\n```\n');
-      buffer.writeln('💡 **Root Cause Analysis:** Python stopped execution because of this error. ');
+      buffer.writeln(
+        '💡 **Root Cause Analysis:** Python stopped execution because of this error. ',
+      );
     } else if (!foundIssue) {
-      buffer.writeln('✨ **Code Structure:** Your syntax appears valid! If your program isn\'t behaving as expected, check your logic flow, print intermediate variables with `print(f"{var=}")`, or verify loop boundary conditions.');
+      buffer.writeln(
+        '✨ **Code Structure:** Your syntax appears valid! If your program isn\'t behaving as expected, check your logic flow, print intermediate variables with `print(f"{var=}")`, or verify loop boundary conditions.',
+      );
     }
 
-    buffer.writeln('\n🚀 **Supernova Tip:** Keep your functions small and focused on a single responsibility. Try testing in the IDE with sample inputs!');
+    buffer.writeln(
+      '\n🚀 **Python tip:** Keep your functions small and focused on a single responsibility. Try testing in the IDE with sample inputs!',
+    );
     return buffer.toString();
   }
 }

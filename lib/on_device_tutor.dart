@@ -7,7 +7,7 @@ import 'package:llama_flutter_android/llama_flutter_android.dart';
 
 import 'model_manager.dart';
 import 'prompt_templates.dart';
-import 'supernova_ai.dart';
+import 'python_teaching_mode.dart';
 
 abstract interface class TutorModel {
   Future<void> load(String modelPath);
@@ -64,14 +64,17 @@ class LlamaCppTutorModel implements TutorModel {
 
 /// Swappable offline tutor runtime. The backend explains work; it never scores it.
 class OnDeviceTutor {
-  OnDeviceTutor({TutorModel? model, ModelManager? manager, SupernovaEngine? supernova})
-    : _model = model ?? LlamaCppTutorModel(),
-      _manager = manager ?? ModelManager(),
-      _supernova = supernova ?? const SupernovaEngine();
+  OnDeviceTutor({
+    TutorModel? model,
+    ModelManager? manager,
+    PythonTeachingMode? teachingMode,
+  }) : _model = model ?? LlamaCppTutorModel(),
+       _manager = manager ?? ModelManager(),
+       _teachingMode = teachingMode ?? const PythonTeachingMode();
 
   final TutorModel _model;
   final ModelManager _manager;
-  final SupernovaEngine _supernova;
+  final PythonTeachingMode _teachingMode;
   bool _ready = false;
   ModelSpec? selectedModel;
   bool get isReady => _ready;
@@ -97,8 +100,8 @@ class OnDeviceTutor {
       final totalRam = device.deviceLocalMemoryBytes > 0
           ? device.deviceLocalMemoryBytes
           : (device.freeRamBytes > 0
-              ? device.freeRamBytes
-              : 4 * 1024 * 1024 * 1024);
+                ? device.freeRamBytes
+                : 4 * 1024 * 1024 * 1024);
       selectedModel = totalRam < 4 * 1024 * 1024 * 1024
           ? ModelCatalog.lowMemory
           : ModelCatalog.standard;
@@ -131,7 +134,7 @@ class OnDeviceTutor {
     String language = 'English',
   }) async* {
     if (!_ready) {
-      yield* _supernova.streamChat(
+      yield* _teachingMode.streamChat(
         prompt: question,
         userName: learnerName,
         currentTopic: module,
@@ -190,7 +193,7 @@ User Submission/Question: $question''';
       if (yieldedLength == 0) yield message;
     } catch (_) {
       if (yieldedLength == 0) {
-        yield* _supernova.streamChat(
+        yield* _teachingMode.streamChat(
           prompt: question,
           userName: learnerName,
           currentTopic: module,
@@ -199,7 +202,7 @@ User Submission/Question: $question''';
       }
     }
     if (yieldedLength == 0) {
-      yield* _supernova.streamChat(
+      yield* _teachingMode.streamChat(
         prompt: question,
         userName: learnerName,
         currentTopic: module,
